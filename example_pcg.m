@@ -142,7 +142,7 @@ for i = 1:length(ids)
             grid on;
             ldg = legend;
             set(ldg, 'Interpreter', 'latex', 'FontSize', config.font_size_legend);
-            set(ldg, 'Location', 'northoutside', 'Orientation', 'horizontal');%, 'NumColumns', numel(lines));
+            set(ldg, 'Location', 'northoutside', 'Orientation', 'horizontal');
             ldg.AutoUpdate = 'off';
             yline(tol_pcg, 'r--');
             exportgraphics(gcf, fullfile(path, 'pcg_convergence.pdf'));

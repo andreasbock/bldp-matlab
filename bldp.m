@@ -60,23 +60,6 @@ classdef bldp
             V = real(W(:,ind));
         end
 
-        function [PC, G_compensated, G, V, L] = bregman_preconditioner2(Q, S, r)
-            [n, ~] = size(Q);
-            G_no1 = Q \ S / Q';
-            f = @(x) x - 1 - log(x);
-            [lambda, Basis] = bldp.sorted_eig(G_no1);
-            [~, idx] = sort(f(lambda));
-            idx_r = idx(end-r+1:end);
-            V = Basis(:, idx_r);
-            lambda = double(lambda(idx_r));
-            G = G_no1 - eye(n);
-            lambda = lambda - double(1);
-
-            L = diag(lambda);
-            G_compensated = V * L * V';
-            PC = Q * (eye(n) + G_compensated) * Q';
-        end
-
         function [PC_action, PC, G_lowrank, eigenvalues, nearness] = bpc(Q, S, r, f)
             % Provides a Bregman preconditioner (sorting eigenvalues by `f`).
             n = size(Q, 1);
