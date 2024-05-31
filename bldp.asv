@@ -110,36 +110,36 @@ classdef bldp
             if ratio < 1 - config.bregman.min_eps
                 r_min = ceil(r * config.bregman.ratio);
                 r_max = r - r_min;
-            elseif ratio > 1 + config.bregman.max_eps
+            elseif ratio > 1 - config.bregman.max_eps
                 r_max = ceil(r * config.bregman.ratio);
                 r_min = r - r_max;
             else
                 r_max = ceil(r * 0.5);
                 r_min = r - r_max;
             end
-            U = [O_max, O_min];
-            ExtremalEigenSpace = eig_max*O_max(:,1)*O_max(:,1)' + eig_min*O_min(:,1)*O_min(:,1)';
-            g_defl = @ (x) g(x) - ExtremalEigenSpace * x;
+            v = bldp.lincomb([O_max, O_min]);
 
+            ExtremalEigenSpace = eig_max*O_min(:,1)*O_max(:,1)' + eig_min*O_min(:,1)*O_min(:,1)';
+            g_defl = @ (x) g(x) - ExtremalEigenSpace * x;
             % Estimate largest eigenvalue
-            [O, H_max, ~, flag, ~, ni] = KrylovSchur(g_defl, bldp.lincomb(U), n, r_max, restart, config.maxit, config.tol);
+            [O, H_max, ~, flag, ~, ni] = KrylovSchur(g_defl, v, n, r_max, restart, config.maxit, config.tol);
             eig_max = H_max(1, 1);
             diagnostics.ni = diagnostics.ni + ni;
             diagnostics.flag = diagnostics.flag || flag;
-            U = [U, O(:, r_max)];
+
+            shg_defl = @ (x) eig_max*x - g(x);
 
             % Estimate smallest eigenvalue
-            shg_defl = @ (x) eig_max*x - g_defl(x);
-            [O, H_min, ~, flag, ~, ni] = KrylovSchur(shg_defl, bldp.lincomb(U), n, r_min, restart, config.maxit, config.tol);
+            [O_min, H_min, ~, flag, ~, ni] = KrylovSchur(shg_defl, bldp.lincomb(O), n, r_min, restart, config.maxit, config.tol);
             diagnostics.ni = diagnostics.ni + ni;
             diagnostics.flag = diagnostics.flag || flag;
+
             if diagnostics.flag
                 error("Failed to get some eigenvalues.");
             end
-            U = [U, O(:, r_min)];
-            eigs = [eig_max, diag(H_max)', eig_max - diag(H_min)', eig_max - eig_min] - 1;
-            result.D = diag(eigs);
-            result.U = U;
+            
+            result.D = diag([diag(H_max); eig_max - diag(H_min)] - 1);
+            result.U = [O_max(:, 1:r_max) O_min(:, 1:r_min)];
             result.action_inner = @ (x) bldp.ShermanMorrisonWoodbury(result.U, result.D, result.U', x);
             result.diagnostics = diagnostics;
         end

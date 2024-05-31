@@ -33,9 +33,15 @@ rank_percentages = [0.01 0.05 0.1];
 tol_pcg = 1e-10;
 maxit_pcg = 100;
 
-%% SuiteSparse matrices
-names = ["494_bus"];%, "1138_bus", "bcsstk04", "bcsstk05", "bcsstk18", "bcsstk08", "bcsstk22", "bcsstm07", "nos5", "lund_a", "mesh2e1", "bcsstk34"];
+%% Krylov-Schur parameters
+config.full_assembly = 1;
+config.tol = 1e-05;
+config.maxit = 40;
+config.restart = 10;
+%config.chunk_size = 4;
 
+%% SuiteSparse matrices
+names = ["494_bus"];  %, "1138_bus", "bcsstk04", "bcsstk05", "bcsstk18", "bcsstk08", "bcsstk22", "bcsstm07", "nos5", "lund_a", "mesh2e1", "bcsstk34"];
 suitesparse_criteria.n_max = 5000;
 suitesparse_criteria.n_min = 100;
 suitesparse_criteria.symmetric = 1;
@@ -100,21 +106,28 @@ for i = 1:length(ids)
 
             %% Low-rank approximations %%            
             %% SVD (or Nyström)
-            [P_op_svd, P_svd, G_svd, eig_svd, nn_svd] = bldp.svd_preconditioner(Q, S, r);
+            config_svd.nystrom = 1;
+            config_svd.oversampling = 35;
+            p_svd = bldp.svd_preconditioner(Q, S, r, config_svd);
 
             %% Bregman
-            [P_op_breg, P_breg, G_breg, eig_breg, nn_breg] = bldp.bregman_preconditioner(Q, S, r);
-            [P_op_rbreg, P_rbreg, G_rbreg, eig_rbreg, nn_rbreg] = bldp.reverse_bregman_preconditioner(Q, S, r);
+            config.v = randn(n, 1);
+            config.krylov_schur = 1;
+            p_breg = bldp.bregman_preconditioner(Q, S, r, config);
+            p_rbreg = bldp.reverse_bregman_preconditioner(Q, S, r, config);
+            p_breg.diagnostics.ni
 
             %% Preconditioned conjugate gradient method
             b = randn(1, n)';
             norm_b = norm(b);
+            pcg(S, b, tol_pcg, maxit_pcg, p_svd.action);
+            pcg(S, b, tol_pcg, maxit_pcg, p_breg.action);
 
             [~, flag_nopc, ~, iter_nopc, resvec_nopc] = pcg(S, b, tol_pcg, maxit_pcg);
             [~, flag_ichol, ~, iter_ichol, resvec_ichol] = pcg(S, b, tol_pcg, maxit_pcg, Q, Q');
-            [~, flag_svd, ~, iter_svd, resvec_svd] = pcg(S, b, tol_pcg, maxit_pcg, P_op_svd);
-            [~, flag_breg, ~, iter_breg, resvec_breg] = pcg(S, b, tol_pcg, maxit_pcg, P_breg);
-            [~, flag_rbreg, ~, iter_rbreg, resvec_rbreg] = pcg(S, b, tol_pcg, maxit_pcg, P_op_rbreg);
+            [~, flag_svd, ~, iter_svd, resvec_svd] = pcg(S, b, tol_pcg, maxit_pcg, p_svd.action);
+            [~, flag_breg, ~, iter_breg, resvec_breg] = pcg(S, b, tol_pcg, maxit_pcg, p_breg.action);
+            [~, flag_rbreg, ~, iter_rbreg, resvec_rbreg] = pcg(S, b, tol_pcg, maxit_pcg, p_rbreg.action);
 
             relres_nopc = resvec_nopc / norm_b;
             relres_ichol = resvec_ichol / norm_b;
@@ -155,8 +168,8 @@ for i = 1:length(ids)
                 eigenvalues = flip(sort(real(eig(full(G)))));
                 for ylog = [0 1]
                     curves_path = fullfile(path, ['ylog = ', num2str(ylog)]);
-                    bldp.plot_bregman_curves(eigenvalues, eig_svd, eig_breg, curves_path, ylog);
-                    bldp.plot_svd_curve(eigenvalues, eig_svd, eig_breg, curves_path, ylog);
+                    bldp_plot.plot_bregman_curves(eigenvalues, p_svd.eig,  p_breg.eig, curves_path, ylog);
+                    bldp_plot.plot_svd_curve(eigenvalues, p_svd.eig, p_breg.eig, curves_path, ylog);
                 end
             end
 
@@ -177,13 +190,13 @@ for i = 1:length(ids)
                 iter_rbreg, ...
                 cond_S, ...
                 cond_ichol, ...
-                nn_svd.cond, ...
-                nn_breg.cond, ...
-                nn_rbreg.cond, ...
+                p_svd.nearness.cond, ...
+                p_breg.nearness.cond, ...
+                p_rbreg.nearness.cond, ...
                 divg_ichol, ...
-                nn_svd.div, ...
-                nn_breg.div, ...
-                nn_rbreg.div, ...
+                p_svd.nearness.div, ...
+                p_breg.nearness.div, ...
+                p_rbreg.nearness.div, ...
                 flag_nopc, ...
                 flag_ichol, ...
                 flag_svd, ...
