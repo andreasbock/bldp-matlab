@@ -10,7 +10,7 @@ csv_path = fullfile(base_path, 'results.csv');
 csv_out = fopen(csv_path,'w');
 fprintf(csv_out, "Name,n,r,resnopc,resichol,resscaled,resbreg,resreversebreg,iternopc,iterichol,iterscaled,iterbreg,iterreversebreg,condS,condichol,condscaled,condbreg,condreversebreg,divgichol,divgscaled,divgbreg,divgreversebreg,flagnopc,flagichol,flagscaled,flagbreg,flagreversebreg\n");
 config_breg = Config();
-tol_test = 1e-09;  % tolerance for tests
+tol_test = 1e-05;  % tolerance for tests
 
 %% ichol and preconditioner parameters
 default_options.type = 'nofill';
@@ -35,7 +35,7 @@ tol_pcg = 1e-10;
 maxit_pcg = 100;
 
 %% SuiteSparse matrices
-names = ["494_bus", "1138_bus"];
+names = ["494_bus", "1138_bus", "bcsstk05", "bcsstk08"];
 
 suitesparse_criteria.n_max = 1200;
 suitesparse_criteria.n_min = 100;
@@ -52,15 +52,11 @@ for i = 1:length(ids)
     S = Prob.A;        % A is a symmetric sparse matrix
     n = size(S, 1);
     I = speye(n);
-    label = Prob.name;
-    cond_S = condest(S);
-    path_matrix = fullfile(base_path, label);
 
     %% Loop for ranks
     for ridx = 1:numel(rank_percentages)
         r_percentage = rank_percentages(ridx);
         r = max(floor(n * r_percentage), 2);
-        subspace_iterations = floor((n / r));
         
         %% Loop over ichol options
         for j = 1:numel(options)

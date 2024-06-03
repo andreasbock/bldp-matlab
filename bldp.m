@@ -87,20 +87,17 @@ classdef bldp
             result.action = @ (x) Q' \ (result.action_inner(Q \ x));
         end
 
-        function result = bpc_ks(Q, S, r, f, config)
+        function result = bpc_ks(Q, S, r, ~, config)
             addpath('krylov_schur');
             n = size(S, 1);
             g = @ (x) Q \ (S * (Q' \ x));
 
             r_largest = ceil(r * config.bregman.ratio);
             r_smallest = r - r_largest;
-            
             restart = max(config.restart, r);
-            
-            % Estimate remaining largest eigenvalues
+
             if r_largest > 0
-                %g_defl = @ (x) g(x) - O_max*(eig_max*(O_max'*x));
-                %[O, H_max, ~, flag, ~, ni] = KrylovSchur(g, bldp.lincomb([U, O_min]), n, rl_, restart, config.maxit, config.tol);
+                % Estimate largest eigenvalues
                 [O, H_max, ~, diagnostics.flag, ~, diagnostics.ni] = KrylovSchur(g, config.v, n, r_largest, restart, config.maxit, config.tol);
                 U = [O(:, 1:r_largest)];
                 D = diag(H_max(1:r_largest, 1:r_largest))';
@@ -113,7 +110,7 @@ classdef bldp
 
             % Estimate smallest eigenvalues
             if r_smallest > 0
-                shg_defl = @ (x) eig_max*x - g(x);% - eig_min*(O_min*(O_min'*x));
+                shg_defl = @ (x) eig_max*x - g(x);
                 [O, H_min, ~, flag, ~, ni] = KrylovSchur(shg_defl, bldp.lincomb(O), n, r_smallest, restart, config.maxit, config.tol);
                 
                 U = [U, O(:, 1:r_smallest)];
@@ -123,8 +120,6 @@ classdef bldp
                 diagnostics.flag = diagnostics.flag || flag;
             end
 
-            %U = [U, O_min];
-            %D = [D, eig_max - eig_min] - 1;
             if diagnostics.flag
                 error("Failed to get some eigenvalues.");
             end
