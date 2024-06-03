@@ -125,16 +125,14 @@ for i = 1:length(ids)
             p_breg_full = bldp.bregman_preconditioner(Q, S, r, config_breg);
             % Krylov-Schur
             config_breg.krylov_schur = 1;
-            config_breg.bregman.min_eps = 0.1;
-            config_breg.bregman.max_eps = 0.1;
-            config_breg.bregman.ratio = 1;
+            config_breg.bregman.ratio = 0.5;
             p_breg_krs = bldp.bregman_preconditioner(Q, S, r, config_breg);
             %% Diagnostics
             error_bregman_exact_eigs = norm(eg(p_breg_full.idx) - diag(p_breg_full.D));
             error_bregman_exact_evec = norm(eV(:,p_breg_full.idx) - p_breg_full.U);
             error_bregman_exact = max(error_bregman_exact_eigs, error_bregman_exact_evec);
 
-            idx = flip([1:p_breg_krs.r_min, n-p_breg_krs.r_max+1:n]);
+            idx = flip([1:p_breg_krs.r_smallest, n-p_breg_krs.r_largest+1:n]);
             [p_breg_krs_eig, krs_idx] = sort(diag(p_breg_krs.D), 'descend');
             error_bregman_ks_eigs = norm(eg(idx) - p_breg_krs_eig);
             error_bregman_ks_evec = norm(abs(eV(:, idx)) - abs(p_breg_krs.U(:,krs_idx)));
