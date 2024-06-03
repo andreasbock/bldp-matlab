@@ -135,7 +135,8 @@ for i = 1:length(ids)
             error_bregman_ks = max(error_bregman_exact_eigs, error_bregman_exact_evec);
 
             error_bregman = error_bregman_exact > tol_test || error_bregman_ks > tol_test;
-
+            
+            %% Test eigenvalues and eigenvectors
             if error_svd || error_bregman
                 error("Test failed.");
             else
