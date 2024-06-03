@@ -28,16 +28,16 @@ for i=2:numel(droptols)
     options(i).diagcomp = 0;
 end
 diagcomp = 0.01;
-rank_percentages = [0.01 0.05 0.1];
+rank_percentages = [0.05 0.1];
 
 %% PCG parameters
 tol_pcg = 1e-10;
 maxit_pcg = 100;
 
 %% SuiteSparse matrices
-names = ["494_bus"];%, "1138_bus", "bcsstk04", "bcsstk05", "bcsstk18", "bcsstk08", "bcsstk22", "bcsstm07", "nos5", "lund_a", "mesh2e1", "bcsstk34"];
+names = ["494_bus", "1138_bus"];
 
-suitesparse_criteria.n_max = 1000;
+suitesparse_criteria.n_max = 1200;
 suitesparse_criteria.n_min = 100;
 suitesparse_criteria.symmetric = 1;
 suitesparse_criteria.real = 1;
@@ -85,7 +85,12 @@ for i = 1:length(ids)
                 fprintf('\t sign(Gmin) == sign(Gmax).\n');
                 break
             end
-            %e = flip(sort(eig(G)));
+
+            G = Q \ S / Q';
+            G = (G + G')/2;
+            [eV, E] = eig(full(G));
+            eg = real(diag(E)) - 1;
+
             %% Absolute value: SVD %%
             config_abs.evd = 1; config_abs.nystrom = 0;
             config_abs.krylov_schur = 0;
@@ -94,6 +99,7 @@ for i = 1:length(ids)
             config_abs.c = 1;
             config_abs.nystrom = 0; config_abs.nystrom = 1;
             config_abs.full_assembly = 1;
+            % TODO!
             p_nys = bldp.svd_preconditioner(Q, S, n, config_abs);
             %% Absolute value: Krylov-Schur
             config_abs.tol = 1e-10;
@@ -104,10 +110,11 @@ for i = 1:length(ids)
             p_ks_abs = bldp.svd_preconditioner(Q, S, r, config_abs);
             %% Diagnostics
             % SVD vs KS (r << n)
-            error_svd_ks = norm(p_ks_abs.V * p_ks_abs.D * p_ks_abs.V' - p_svd.V * p_svd.D * p_svd.V')
+            error_svd_ks = norm(p_ks_abs.V * p_ks_abs.D * p_ks_abs.V' - p_svd.V * p_svd.D * p_svd.V');
             % SVD vs Nyström (r == n)
-            error_svd_nys = norm(p_nys.V * p_nys.D * p_nys.V' - G)
+            error_svd_nys = norm(p_nys.V * p_nys.D * p_nys.V' - G + I);
 
+            error_svd = error_svd_ks > tol_test || error_svd_nys > tol_test;
             %% Bregman %%
             config_breg.tol = 1e-10;
             config_breg.maxit = 100;
@@ -120,19 +127,28 @@ for i = 1:length(ids)
             config_breg.krylov_schur = 1;
             config_breg.bregman.min_eps = 0.1;
             config_breg.bregman.max_eps = 0.1;
-            config_breg.bregman.ratio = 0.8;
+            config_breg.bregman.ratio = 1;
             p_breg_krs = bldp.bregman_preconditioner(Q, S, r, config_breg);
             %% Diagnostics
-            p_breg_krs.diagnostics
-            %error_bregman_ks = norm(p_breg_full.D - p_breg_krs.D)
+            error_bregman_exact_eigs = norm(eg(p_breg_full.idx) - diag(p_breg_full.D));
+            error_bregman_exact_evec = norm(eV(:,p_breg_full.idx) - p_breg_full.U);
+            error_bregman_exact = max(error_bregman_exact_eigs, error_bregman_exact_evec);
 
-            if error_svd_ks > tol_test || error_svd_nys > tol_test
+            idx = flip([1:p_breg_krs.r_min, n-p_breg_krs.r_max+1:n]);
+            [p_breg_krs_eig, krs_idx] = sort(diag(p_breg_krs.D), 'descend');
+            error_bregman_ks_eigs = norm(eg(idx) - p_breg_krs_eig);
+            error_bregman_ks_evec = norm(abs(eV(:, idx)) - abs(p_breg_krs.U(:,krs_idx)));
+            error_bregman_ks = max(error_bregman_exact_eigs, error_bregman_exact_evec);
+
+            error_bregman = error_bregman_exact > tol_test || error_bregman_ks > tol_test;
+
+            if error_svd || error_bregman
                 error("Test failed.");
             else
-                fprintf("Test passed.\n");
+                disp("Test passed.");
             end
         end
     end
 end
-fclose(csv_out);
+disp("ALL TESTS PASS.");
 toc

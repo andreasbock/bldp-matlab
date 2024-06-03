@@ -35,15 +35,18 @@ classdef bldp
                     i = i(end-r+1:end);
                     result.V = V(:, i);
                     result.D = D(i, i);
+                    if min(diag(result.D)) <= -1
+                        error("Nyström preconditioner is singular.")
+                    end
                 end
-                smw = @ (x) bldp.ShermanMorrisonWoodbury(Y, iinner_truncated, Y', x);
+                smw = @ (x) bldp.SMW(Y, iinner_truncated, Y', x);
             elseif config.krylov_schur
                 addpath('krylov_schur');
                 restart = max(config.restart, r) + 1;
                 [O, H, ~, flag, ~, ni] = KrylovSchur(@ (x) Q \ (S * (Q' \ x)) - x, config.v, n, r, restart, config.maxit, config.tol);
                 result.V = O(:, 1:r);
                 result.D = diag(diag(H));
-                smw = @ (x) bldp.ShermanMorrisonWoodbury(U, L, U', x);
+                smw = @ (x) bldp.SMW(U, L, U', x);
                 result.diagnostics.ni = ni;
                 result.diagnostics.flag = flag;
             elseif config.evd
@@ -53,7 +56,7 @@ classdef bldp
                 i = i(end-r+1:end);
                 result.V = V(:, i);
                 result.D = D(i, i);
-                smw = @ (x) bldp.ShermanMorrisonWoodbury(result.V, result.D, result.V', x);
+                smw = @ (x) bldp.SMW(result.V, result.D, result.V', x);
             else
                 error("Invalid config.")
             end
@@ -92,20 +95,21 @@ classdef bldp
             restart = max(config.restart, r);
             % Estimate largest eigenvalue
             [O_max, H_max, ~, diagnostics.flag, ~, diagnostics.ni] = KrylovSchur(g, config.v, n, 1, restart, config.maxit, config.tol);
+            O_max = O_max(:, 1);
             eig_max = H_max(1, 1);
 
             % Estimate smallest eigenvalue
             shg = @ (x) eig_max*x - g(x);
-            [O_min, H_min, ~, flag, ~, ni] = KrylovSchur(shg, O_max(:, 1), n, 1, restart, config.maxit, config.tol);
+            [O_min, H_min, ~, flag, ~, ni] = KrylovSchur(shg, O_max, n, 1, restart, config.maxit, config.tol);
+            O_min = O_min(:, 1);
             eig_min = H_min(1, 1);
             diagnostics.ni = diagnostics.ni + ni;
             diagnostics.flag = diagnostics.flag || flag;
             if diagnostics.flag
                 error("Failed to get extremal eigenvalues.");
             end
-            % Examine f(lambda_max) / f(lambda_min) ratio to determine
-            % how many small/large eigenvalues we wish to estimate for our
-            % preconditioner
+            % Examine f(lambda_max) / f(lambda_min) ratio to determine how many
+            % preconditioner small/large eigenvalues we wish to estimate for our
             ratio = f(eig_max) / f(eig_min);
             if ratio < 1 - config.bregman.min_eps
                 r_min = ceil(r * config.bregman.ratio);
@@ -117,47 +121,68 @@ classdef bldp
                 r_max = ceil(r * 0.5);
                 r_min = r - r_max;
             end
-            U = [O_max, O_min];
-            ExtremalEigenSpace = eig_max*O_max(:,1)*O_max(:,1)' + eig_min*O_min(:,1)*O_min(:,1)';
-            g_defl = @ (x) g(x) - ExtremalEigenSpace * x;
+            if r_max == r
+                r_min = r - 1;
+                r_max = 1;
+            elseif r_min == r
+                r_max = 1;
+                r_min = r - 1;
+            end
+            U = [O_max];
+            D = [eig_max];
+            if r_max > 1
+                r_max_ = r_max - 1;  % we already estimated the largest eigenvalue
 
-            % Estimate largest eigenvalue
-            [O, H_max, ~, flag, ~, ni] = KrylovSchur(g_defl, bldp.lincomb(U), n, r_max, restart, config.maxit, config.tol);
-            eig_max = H_max(1, 1);
-            diagnostics.ni = diagnostics.ni + ni;
-            diagnostics.flag = diagnostics.flag || flag;
-            U = [U, O(:, r_max)];
+                % Estimate remaining largest eigenvalues
+                g_defl = @ (x) g(x) - O_max*(eig_max*(O_max'*x));
+                [O, H_max, ~, flag, ~, ni] = KrylovSchur(g_defl, bldp.lincomb([U, O_min]), n, r_max_, restart, config.maxit, config.tol);
 
-            % Estimate smallest eigenvalue
-            shg_defl = @ (x) eig_max*x - g_defl(x);
-            [O, H_min, ~, flag, ~, ni] = KrylovSchur(shg_defl, bldp.lincomb(U), n, r_min, restart, config.maxit, config.tol);
-            diagnostics.ni = diagnostics.ni + ni;
-            diagnostics.flag = diagnostics.flag || flag;
+                U = [U, O(:, 1:r_max_)];
+                D = [D, diag(H_max(1:r_max_, 1:r_max_))'];
+
+                diagnostics.ni = diagnostics.ni + ni;
+                diagnostics.flag = diagnostics.flag || flag;
+            end
+            if r_min > 1
+                r_min_ = r_min - 1;  % we already estimated the smallest eigenvalue
+
+                % Estimate smallest eigenvalues
+                shg_defl = @ (x) eig_max*x - g(x) - eig_min*(O_min*(O_min'*x));
+                [O, H_min, ~, flag, ~, ni] = KrylovSchur(shg_defl, bldp.lincomb([U, O_min]), n, r_min_, restart, config.maxit, config.tol);
+                
+                U = [U, O(:, 1:r_min_)];
+                D = [D,  eig_max - diag(H_min(1:r_min_, 1:r_min_))'];
+
+                diagnostics.ni = diagnostics.ni + ni;
+                diagnostics.flag = diagnostics.flag || flag;
+            end
+            U = [U, O_min];
+            D = [D, eig_max - eig_min] - 1;
             if diagnostics.flag
                 error("Failed to get some eigenvalues.");
             end
-            U = [U, O(:, r_min)];
-            eigs = [eig_max, diag(H_max)', eig_max - diag(H_min)', eig_max - eig_min] - 1;
-            result.D = diag(eigs);
+            result.D = diag(D);
             result.U = U;
-            result.action_inner = @ (x) bldp.ShermanMorrisonWoodbury(result.U, result.D, result.U', x);
+            result.r_max = r_max;
+            result.r_min = r_min;
+            result.action_inner = @ (x) bldp.SMW(result.U, result.D, result.U', x);
             result.diagnostics = diagnostics;
         end
 
         function result = bpc_evd(Q, S, r, f)
-            n = size(Q, 1);
-            I = eye(n);
-            G = full(Q \ S / Q');
-            [U, E] = eig(G);
+            G = Q \ S / Q';
+            G = (G + G') / 2;
+            [U, E] = eig(full(G));
             eig_G = real(diag(E));
             [~, idx] = sort(f(eig_G));
             idx_r = idx(end-r+1:end);
             if norm(imag(f(eig_G))) > 0 || norm(imag(eig_G)) > 0
                 error('Imagininary eigenvalues in approximations.')
             end
+            result.idx = idx_r;
             result.U = U(:, idx_r);
             result.D = diag(eig_G(idx_r) - 1);
-            result.action_inner = @ (x) bldp.ShermanMorrisonWoodbury(result.U, result.D, result.U', x);
+            result.action_inner = @ (x) bldp.SMW(result.U, result.D, result.U', x);
         end
 
         function v = bregman_divergence(X, Y)
@@ -174,7 +199,7 @@ classdef bldp
                 mu2 = e(2);
         end
 
-        function y = ShermanMorrisonWoodbury(U, C, V, x)
+        function y = SMW(U, C, V, x)
             inner = inv(C) + V*U;
             y = inner \ (V * x);
             y = x - U * y;
