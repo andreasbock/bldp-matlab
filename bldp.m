@@ -82,12 +82,12 @@ classdef bldp
                 result = bldp.bpc_evd(Q, S, r, f);
                 result.diagnostics.flag = 0;
             else
-                result = bldp.bpc_ks(Q, S, r, f, config);
+                result = bldp.bpc_krylov_schur(Q, S, r, f, config);
             end
             result.action = @ (x) Q' \ (result.action_inner(Q \ x));
         end
 
-        function result = bpc_ks(Q, S, r, ~, config)
+        function result = bpc_krylov_schur(Q, S, r, ~, config)
             addpath('krylov_schur');
             n = size(S, 1);
             g = @ (x) Q \ (S * (Q' \ x));
@@ -120,10 +120,6 @@ classdef bldp
                 diagnostics.flag = diagnostics.flag || flag;
             end
 
-            if diagnostics.flag
-                error("Failed to get some eigenvalues.");
-            end
-            
             result.D = diag(D - 1);
             result.U = U;
             result.r_largest = r_largest;
