@@ -23,7 +23,7 @@ diagcomp = 0.01;
 rank_percentages = [0.02 0.1];
 
 %% PCG parameters
-tol_pcg = 1e-10;
+tol_pcg = 1e-05;
 maxit_pcg = 100;
 
 %% SuiteSparse matrices
