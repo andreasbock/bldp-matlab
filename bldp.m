@@ -94,7 +94,7 @@ classdef bldp
 
             r_largest = ceil(r * config.bregman.ratio);
             r_smallest = r - r_largest;
-            restart = max(config.restart, r);
+            restart = max(config.restart, r) + 1;
 
             if r_largest > 0
                 % Estimate largest eigenvalues

@@ -85,13 +85,13 @@ for i = 1:length(ids)
             
             %% Bregman %%
             config_breg.tol = 1e-10;
-            config_breg.maxit = 75;
-            config_breg.restart = 75;
+            config_breg.maxit = 20;
+            config_breg.restart = 30;
             config_breg.v = randn(n, 1);
             config_breg.krylov_schur = 0;
             % full eigendecomposition
             p_breg_full = bldp.bregman_preconditioner(Q, S, r, config_breg);
-           
+
             % Krylov-Schur
             config_breg.krylov_schur = 1;
 
