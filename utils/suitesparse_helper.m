@@ -13,13 +13,16 @@ classdef suitesparse_helper
             conditions = size_conditions & is_symmetric;
             conditions = conditions & index.posdef == criteria.posdef & index.isReal == criteria.real;
             
-            include_names = zeros(size(conditions));
-            % filter based on names`
-            for i = 1:length(names)
-                include_names = include_names | strcmp(index.Name, names(i))';  % (transpose is important!) 
+            n_names = length(names);
+            if n_names > 0
+                include_names = zeros(size(conditions));
+                % filter based on names`
+                for i = 1:n_names
+                    include_names = include_names | strcmp(index.Name, names(i))';  % (transpose is important!) 
+                end
+                conditions = conditions & include_names;
             end
-            conditions = conditions & include_names;
-
+            
             % find and return matrices satisfying all conditions
             ids = find(conditions);
 
