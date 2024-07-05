@@ -1,4 +1,4 @@
-function config = Config()
+function config = Plotting()
 
     alpha = 0.3;
     size_step = 50;

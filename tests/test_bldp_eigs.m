@@ -3,16 +3,9 @@ addpath('SuiteSparse-7.1.0/ssget');
 addpath('utils');
 warning('off', 'MATLAB:MKDIR:DirectoryExists');
 
-%% Paths and files
-base_path = 'RESULTS';
-mkdir(base_path);
-csv_path = fullfile(base_path, 'results.csv');
-csv_out = fopen(csv_path,'w');
-fprintf(csv_out, "Name,n,r,resnopc,resichol,resscaled,resbreg,resreversebreg,iternopc,iterichol,iterscaled,iterbreg,iterreversebreg,condS,condichol,condscaled,condbreg,condreversebreg,divgichol,divgscaled,divgbreg,divgreversebreg,flagnopc,flagichol,flagscaled,flagbreg,flagreversebreg\n");
-config_breg = Config();
 tol_test = 1e-05;  % tolerance for tests
 
-%% ichol and preconditioner parameters
+% ichol and preconditioner parameters
 default_options.type = 'nofill';
 default_options.droptol = 0;  % ignored if 'type' is 'nofill'
 default_options.michol = 'off';
@@ -30,21 +23,15 @@ end
 diagcomp = 0.01;
 rank_percentages = [0.05 0.1];
 
-%% PCG parameters
+% PCG parameters
 tol_pcg = 1e-10;
 maxit_pcg = 100;
 
-%% SuiteSparse matrices
-names = ["494_bus", "1138_bus", "bcsstk05", "bcsstk08"];
+% SuiteSparse matrices
+suitesparse_criteria.names = ["494_bus", "1138_bus", "bcsstk05", "bcsstk08"];
+ids = SuitesSparseHelper.get(suitesparse_criteria);
 
-suitesparse_criteria.n_max = 1200;
-suitesparse_criteria.n_min = 100;
-suitesparse_criteria.symmetric = 1;
-suitesparse_criteria.real = 1;
-suitesparse_criteria.posdef = 1;
-ids = suitesparse_helper.get(suitesparse_criteria, names);
-
-%% Begin simulations
+% Begin simulations
 tic
 for i = 1:length(ids)
     id = ids(i);
@@ -53,15 +40,15 @@ for i = 1:length(ids)
     n = size(S, 1);
     I = speye(n);
 
-    %% Loop for ranks
+    % Loop for ranks
     for ridx = 1:numel(rank_percentages)
         r_percentage = rank_percentages(ridx);
         r = max(floor(n * r_percentage), 2);
-        
-        %% Loop over ichol options
+        % Loop over ichol options
         for j = 1:numel(options)
+            fprintf("%s - %d (ichol = %d)\n", Prob.name, r, j);
             o = options(j);
-            %% Compute incomplete Cholesky
+            % Compute incomplete Cholesky
             try
                 Q = ichol(S, o);
             catch ME
@@ -74,69 +61,61 @@ for i = 1:length(ids)
                 end
                 continue
             end
-            G = Q \ S / Q' - I;
-            G = (G + G')/2;
-            [Gmin, Gmax] = bldp.extremal_eigenvalues(G, 5*r);
-            if sign(Gmin) == sign(Gmax) || abs(Gmax + Gmin) < 1e-10
-                fprintf('\t sign(Gmin) == sign(Gmax).\n');
-                break
-            end
 
-            G = Q \ S / Q';
+            % Compute G and SVD/Bregman truncations
+            G = full(Q \ S / Q' - I);
             G = (G + G')/2;
-            [eV, E] = eig(full(G));
-            eg = real(diag(E)) - 1;
+            [V, E] = eig(G);
+            [~, gidx] = sort(abs(diag(E)));
+            gidx_r = gidx(end-r+1:end);
+            G_r = V(:, gidx_r)*E(gidx_r,gidx_r)*V(:,gidx_r)';
+            bregman_curve = @(x) x - log(1 + x);
+            [~, gidx_bm] = sort(bregman_curve(diag(E)));
+            gidx_bm_r = gidx_bm(end-r+1:end);
+            V_bregman = V(:,gidx_bm_r);
+            E_bregman = E(gidx_bm_r,gidx_bm_r);
+            G_bregman = V_bregman * E_bregman * V_bregman';
 
-            %% Absolute value: SVD %%
-            config_abs.evd = 1; config_abs.nystrom = 0;
-            config_abs.krylov_schur = 0;
+            % Absolute value: SVD
+            config_abs.method = 'evd';
             p_svd = bldp.svd_preconditioner(Q, S, r, config_abs);
-            %% Absolute value: Nyström
-            config_abs.c = 1;
-            config_abs.nystrom = 0; config_abs.nystrom = 1;
-            config_abs.full_assembly = 1;
-            % TODO!
+            error_svd_exact = norm(G_r - p_svd.U * p_svd.D * p_svd.U');
+
+            % Absolute value: Nyström (note that r == n!)
+            config_abs.method = 'nystrom';
             p_nys = bldp.svd_preconditioner(Q, S, n, config_abs);
-            %% Absolute value: Krylov-Schur
-            config_abs.tol = 1e-10;
-            config_abs.maxit = 150;
-            config_abs.restart = 150;
-            config_abs.v = randn(n, 1);
-            config_abs.krylov_schur = 1; config_abs.nystrom = 0; config_abs.nystrom = 0;
-            p_ks_abs = bldp.svd_preconditioner(Q, S, r, config_abs);
-            %% Diagnostics
-            % SVD vs KS (r << n)
-            error_svd_ks = norm(p_ks_abs.V * p_ks_abs.D * p_ks_abs.V' - p_svd.V * p_svd.D * p_svd.V');
-            % SVD vs Nyström (r == n)
-            error_svd_nys = norm(p_nys.V * p_nys.D * p_nys.V' - G + I);
+            G_nys = p_nys.U * p_nys.D * p_nys.U';
+            error_svd_nys = norm(G - G_nys);
 
-            error_svd = error_svd_ks > tol_test || error_svd_nys > tol_test;
-            %% Bregman %%
-            config_breg.tol = 1e-10;
-            config_breg.maxit = 100;
-            config_breg.restart = 100;
-            config_breg.v = randn(n, 1);
-            config_breg.krylov_schur = 0;
+            % Diagnostics
+            % SVD vs KS (r << n) and SVD vs Nyström (r == n)
+            error_svd = error_svd_exact > tol_test || error_svd_nys > tol_test;
+
+            % Bregman
+            config_breg.method = 'evd';
             % full eigendecomposition
-            p_breg_full = bldp.bregman_preconditioner(Q, S, r, config_breg);
+            p_breg = bldp.bregman_preconditioner(Q, S, r, config_breg);
+            error_bregman_exact = norm(G_bregman - p_breg.U * p_breg.D * p_breg.U');
+
             % Krylov-Schur
-            config_breg.krylov_schur = 1;
-            config_breg.bregman.ratio = 0.5;
-            p_breg_krs = bldp.bregman_preconditioner(Q, S, r, config_breg);
-            %% Diagnostics
-            error_bregman_exact_eigs = norm(eg(p_breg_full.idx) - diag(p_breg_full.D));
-            error_bregman_exact_evec = norm(eV(:,p_breg_full.idx) - p_breg_full.U);
-            error_bregman_exact = max(error_bregman_exact_eigs, error_bregman_exact_evec);
+            config_breg.method = 'krylov_schur';
+            config_breg.v = randn(n, 1);
+            config_breg.estimate_largest_with_nystrom = 0;
+            config_breg.tol = 1e-10;
+            config_breg.maxit = 150;
+            config_breg.subspace_dim = 150;
 
-            idx = flip([1:p_breg_krs.r_smallest, n-p_breg_krs.r_largest+1:n]);
-            [p_breg_krs_eig, krs_idx] = sort(diag(p_breg_krs.D), 'descend');
-            error_bregman_ks_eigs = norm(eg(idx) - p_breg_krs_eig);
-            error_bregman_ks_evec = norm(abs(eV(:, idx)) - abs(p_breg_krs.U(:,krs_idx)));
-            error_bregman_ks = max(error_bregman_exact_eigs, error_bregman_exact_evec);
+            % Compute ratio from analytical solution
+            config_breg.r_largest = sum(sign(diag(p_breg.D))==1);
 
+            p_breg_krs = bldp.bregman_preconditioner(Q, @(x) S*x, r, config_breg);
+            error_bregman_ks = norm(G_bregman - p_breg_krs.U * p_breg_krs.D * p_breg_krs.U');
+            
+            % Diagnostics
+            % Exact Bregman vs EVD and KS Bregman vs EVD
             error_bregman = error_bregman_exact > tol_test || error_bregman_ks > tol_test;
             
-            %% Test eigenvalues and eigenvectors
+            % Test eigenvalues and eigenvectors
             if error_svd || error_bregman
                 error("Test failed.");
             else

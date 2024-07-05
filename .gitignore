@@ -1,5 +1,5 @@
-.gold_stuff/
-RESULTS/
+.old*
+RESULTS*
 SuiteSparse*
 KrylovSchur*
 *.asv
