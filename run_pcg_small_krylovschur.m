@@ -10,9 +10,9 @@ global matvec_count;
 config_breg.method = 'krylov_schur';
 config_breg.estimate_largest_with_nystrom = 1;
 config_breg.tol = 1e-10;
-config_breg.maxit = 100;
-config_breg.oversampling = 6;
-subspace_slack = 20;
+config_breg.maxit = 200;
+config_breg.oversampling = 15;
+subspace_slack = 80;
 
 config_svd.method = 'nystrom';
 config_svd.oversampling = 20;
@@ -39,7 +39,7 @@ fclose(options_file);
 
 % ichol and preconditioner parameters
 retry_diagcomp = 100;
-default_diagcomp = 1;
+default_diagcomp = 0;
 default_opts_ichol.type = 'nofill';
 default_opts_ichol.droptol = 0;  % ignored if 'type' is 'nofill'
 default_opts_ichol.michol = 'off';
