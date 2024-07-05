@@ -83,8 +83,9 @@ for i = 1:length(ids)
 
             % Absolute value: Nyström (note that r == n!)
             config_abs.method = 'nystrom';
+            config_abs.Omega = randn(n, n);
             p_nys = bldp.svd_preconditioner(Q, S, n, config_abs);
-            G_nys = p_nys.U * p_nys.D * p_nys.U';
+            G_nys = p_nys.U * p_nys.D * p_nys.V';
             error_svd_nys = norm(G - G_nys);
 
             % Diagnostics
@@ -107,7 +108,6 @@ for i = 1:length(ids)
 
             % Compute ratio from analytical solution
             config_breg.r_largest = sum(sign(diag(p_breg.D))==1);
-
             p_breg_krs = bldp.bregman_preconditioner(Q, @(x) S*x, r, config_breg);
             error_bregman_ks = norm(G_bregman - p_breg_krs.U * p_breg_krs.D * p_breg_krs.U');
             
