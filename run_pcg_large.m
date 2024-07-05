@@ -104,15 +104,15 @@ for i = 1:length(ids)
         % Write CSV header, unpreconditioned and ichol runs
         csv_out = fopen(fullfile(base_path, [label '_ichol=' num2str(j) '.csv']), 'w');
         fprintf(csv_out, csv_header);
-        fprintf(csv_out, csv_format, n, "nopc", "-", "-", resvec_nopc(end)/norm_b, iter_nopc, flag_nopc, "-", stime_nopc, 0, "-");
-        fprintf(csv_out, csv_format, n, "ichol", "-", "-", resvec_ichol(end)/norm_b, iter_ichol, flag_ichol, ctime_ichol, stime_ichol, 0, "-");
+        fprintf(csv_out, csv_format, n, "nopc", -1, -1, resvec_nopc(end)/norm_b, iter_nopc, flag_nopc, -1, stime_nopc, 0, -1);
+        fprintf(csv_out, csv_format, n, "ichol", -1, -1, resvec_ichol(end)/norm_b, iter_ichol, flag_ichol, ctime_ichol, stime_ichol, 0, -1);
     
         has_already_failed = zeros(1, 1 + length(ranks));
         % Loop for ranks
         for ridx = flip(1:numel(ranks))
             any_success = 0;
             r = round(n * ranks(ridx));
-            Omega = randn(n, r);
+            Omega = randn(n, r + config_svd.oversampling);
             % Nyström
             config_svd.Omega = Omega;
             if ~has_already_failed(1)
@@ -156,7 +156,7 @@ for i = 1:length(ids)
                 );
                 any_success = any_success || ~flag_breg;
             end
-            fprintf(csv_out, csv_format, n, "nys", "-", r, rv_nys, iter_nys, flag_nys, p_nys.ctime, stime_nys, 1, "-");
+            fprintf(csv_out, csv_format, n, "nys", -1, r, rv_nys, iter_nys, flag_nys, p_nys.ctime, stime_nys, 1, -1);
         end
         fclose(csv_out);
     end

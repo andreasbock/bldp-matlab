@@ -4,20 +4,23 @@ classdef bldp
         function result = svd_preconditioner(Q, S, r, config)
             n = size(Q, 1);
             if strcmp(config.method, 'nystrom')
-                tic;
-                if ~isfield(config, 'Omega')
-                    config.Omega = randn(n, r);
+                if ~isa(S, 'function_handle')
+                    S = @(x) S*x;
                 end
-                [U, D] = bldp.nystrom(Q, S, config.Omega);
-                result.U = U;
-                result.D = D - speye(size(D, 1));
+                G_action = @(x) Q \ S(Q' \ x) - x;
+                tic;
+                [U, D, V] = bldp.indefinite_nystrom(G_action, config.Omega, r);
                 result.ctime = toc;
+                result.U = U;
+                result.D = D;
+                result.V = V;
             elseif strcmp(config.method, 'evd')
                 [result.U, result.D] = bldp.truncate_matrix(Q \ S / Q' - eye(n), @(x) abs(x), r);
+                result.V = result.U;
             else
                 error("Invalid `method` field in `config`.")
             end
-            smw = @ (x) bldp.SMW(result.U, result.D, result.U', x);
+            smw = @ (x) bldp.SMW(result.U, result.D, result.V', x);
             result.action = @ (x) Q' \ (smw(Q \ x));
         end
 
@@ -67,8 +70,7 @@ classdef bldp
             if r_largest > 0
                 % Estimate largest eigenvalues
                 if config.estimate_largest_with_nystrom
-                    Omega = randn(n, r_largest);
-                    [U, D] = bldp.nystrom(Q, S, Omega);
+                    [U, D] = bldp.nystrom(@ (x) Q \ S(Q' \ x), config.Omega);
                     D = diag(D)';
                     H_max = D(1,1);
                     result.diagnostics.nc = r_largest;
@@ -79,9 +81,18 @@ classdef bldp
                 end
             else
                 % Estimate largest eigenvalue for negative shift
-                H_max = eigs(g, n, 1, sigma, opts);
+                if config.estimate_largest_with_nystrom
+                    [~, H_max] = bldp.nystrom(@ (x) Q \ S(Q' \ x), config.Omega);
+                    result.diagnostics.nc = 1;
+                else
+                    H_max = eigs(g, n, 1, sigma, opts);
+                end
                 U = []; D = [];
                 result.diagnostics.nc = 1;
+            end
+            if isempty(H_max)
+                error("Failed to estimate largest eigenvalues. " + ...
+                      "Increase max iterations or subspace dimension.");
             end
             eig_max = H_max(1, 1);
 
@@ -139,21 +150,35 @@ classdef bldp
             y = x - U * y;
         end
 
-        function [U, S] = nystrom(Q, S, Omega)
-            if isa(S, 'function_handle')
-                Y = Q \ splitapply(S, Q' \ Omega, 1:size(Omega,2));
-            else
-                Y = Q \ (S * (Q' \ Omega));
+        function [U, S] = nystrom(A, Omega)
+            if ~isa(A, 'function_handle')
+                error("A must be a function handle.");
             end
-            CC = Omega' * Y;
+            Y = splitapply(A, Omega, 1:size(Omega, 2));
             try
-                Cl = chol(CC);
+                C = chol(Omega' * Y);
             catch ME
                 error("Nyström fails, inner matrix is not PSD.")
             end
-            Yhat = Y / Cl;
+            Yhat = Y / C;
             [U, S, ~] = svd(Yhat, 'econ');
             S = S * S;
+        end
+
+        function [U, S, V] = indefinite_nystrom(A, Omega, r)
+            % Implements:
+            % Nakatsukasa, Yuji, and Taejun Park. "Randomized low-rank
+            % approximation for symmetric indefinite matrices." SIAM 
+            % Journal on Matrix Analysis and Applications 44.3 (2023):
+            % 1370-1392.
+            if ~isa(A, 'function_handle')
+                error("A must be a function handle.");
+            end
+            Y = splitapply(A, Omega, 1:size(Omega, 2));
+            [U, S, V] = svd(Omega' * Y);
+            U = Y * U(:, 1:r);
+            S = pinv(S(1:r, 1:r));
+            V = Y * V(:, 1:r);
         end
     end
 end
