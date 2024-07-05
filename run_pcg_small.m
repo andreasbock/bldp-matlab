@@ -46,7 +46,7 @@ config_svd.method = 'evd';
 config_breg.method = 'evd';
 
 % Begin simulations
-tic
+time_start = tic;
 for i = 1:length(ids)
     id = ids(i);
     Prob = ssget(id);  % Prob is a struct (matrix, name, meta-data, ...)
@@ -176,4 +176,5 @@ for i = 1:length(ids)
     end
 end
 fclose(csv_out);
-toc
+time_end = toc(time_start);
+
