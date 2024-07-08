@@ -7,12 +7,14 @@ warning('off', 'MATLAB:MKDIR:DirectoryExists');
 global matvec_count;
 
 % bldp options
+oversampling = 10;
 config_breg.method = 'krylov_schur';
 config_breg.estimate_largest_with_nystrom = 1;
 config_breg.tol = 1e-04;
 config_breg.maxit = 50;
-config_breg.oversampling = 10;
+config_breg.oversampling = oversampling;
 config_svd.method = 'nystrom';
+config_svd.oversampling = oversampling;
 subspace_slack = 120;
 ratio_step = 0.25;
 
@@ -112,11 +114,12 @@ for i = 1:length(ids)
         for ridx = flip(1:numel(ranks))
             any_success = 0;
             r = round(n * ranks(ridx));
-            sketching_matrix = randn(n, r + config_svd.oversampling);
+            config_svd.r = r;
+            sketching_matrix = randn(n, config_svd.r + config_svd.oversampling);
             % Nyström
             config_svd.sketching_matrix = sketching_matrix;
             if ~has_already_failed(1)
-                p_nys = bldp.svd_preconditioner(Q, S, r, config_svd);
+                p_nys = bldp.svd_preconditioner(Q, S, config_svd);
                 tic
                 [~, flag_nys, ~, iter_nys, resvec_nys] = pcg(S, b, tol_pcg, maxit_pcg, p_nys.action);
                 stime_nys = toc;
@@ -128,17 +131,18 @@ for i = 1:length(ids)
             end
             any_success = any_success || ~flag_nys;
             % Bregman
-            for ratio = 0:ratio_step:1-ratio_step
+            for ratio = 0:ratio_step:1
                 fprintf('[id = %s] %s, n = %d, r = %d, ratio = %f\n', ...
                         num2str(id), label, n, r, ratio);
 
                 matvec_count = 0;
                 config_breg.sketching_matrix = sketching_matrix;
+                config_breg.r = r;
                 config_breg.ratio = ratio;
                 config_breg.v = randn(n, 1);
                 config_breg.subspace_dimension = r + subspace_slack;
                 if ~has_already_failed(1+ridx)
-                    p_breg = bldp.bregman_preconditioner(Q, S_action, r, config_breg);
+                    p_breg = bldp.bregman_preconditioner(Q, S_action, config_breg);
                     tic
                     [~, flag_breg, ~, iter_breg, resvec_breg] = pcg(S, b, tol_pcg, maxit_pcg, p_breg.action);
                     stime_breg = toc;
