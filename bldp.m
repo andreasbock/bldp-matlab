@@ -3,22 +3,32 @@ classdef bldp
 
         function result = svd_preconditioner(Q, S, r, config)
             n = size(Q, 1);
-            if strcmp(config.method, 'nystrom')
+            if strcmp(config.method, 'evd')
+                tic;
+                [result.U, result.D] = bldp.truncate_matrix(Q \ S / Q' - eye(n), @(x) abs(x), r);
+                result.V = result.U;
+                result.ctime = toc;
+            else
+                % convert to handle
                 if ~isa(S, 'function_handle')
                     S = @(x) S*x;
                 end
-                G_action = @(x) Q \ S(Q' \ x) - x;
-                tic;
-                [U, D, V] = bldp.indefinite_nystrom(G_action, config.Omega, r);
-                result.ctime = toc;
-                result.U = U;
-                result.D = D;
-                result.V = V;
-            elseif strcmp(config.method, 'evd')
-                [result.U, result.D] = bldp.truncate_matrix(Q \ S / Q' - eye(n), @(x) abs(x), r);
-                result.V = result.U;
-            else
-                error("Invalid `method` field in `config`.")
+                % which Nyström approximation?
+                if strcmp(config.method, 'indefinite_nystrom')
+                    tic;
+                    [result.U, result.D, result.V] = bldp.indefinite_nystrom(@(x) Q \ S(Q' \ x) - x, config.Omega, r);
+                    result.ctime = toc;
+                elseif strcmp(config.method, 'nystrom')
+                    if ~isa(S, 'function_handle')
+                        S = @(x) S*x;
+                    end
+                    tic;
+                    [result.U, D, result.V] = bldp.nystrom(@(x) Q \ S(Q' \ x), config.Omega);
+                    result.ctime = toc;
+                    result.D = D - speye(r + config.oversampling);
+                else
+                    error("Invalid `method` field in `config`.")
+                end
             end
             smw = @ (x) bldp.SMW(result.U, result.D, result.V', x);
             result.action = @ (x) Q' \ (smw(Q \ x));
@@ -34,6 +44,7 @@ classdef bldp
             else
                 error("Invalid `method` field in `config`.")
             end
+            result.V = result.U;
             result.ctime = toc;
             result.action = @ (x) Q' \ (result.action_inner(Q \ x));
         end
@@ -159,8 +170,9 @@ classdef bldp
             try
                 C = chol(inner);
                 Yhat = Y / C;
-                [U, S, V] = svd(Yhat, 'econ');
+                [U, S] = svd(Yhat, 'econ');
                 S = S * S;
+                V = U;
             catch
                 [U, S, V] = bldp.indefinite_nystrom(A, Omega, size(Omega, 2));
             end

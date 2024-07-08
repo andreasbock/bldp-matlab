@@ -2,6 +2,7 @@ clear; clearvars; close all; beep off;
 addpath('SuiteSparse-7.1.0/ssget');
 addpath('utils');
 warning('off', 'MATLAB:MKDIR:DirectoryExists');
+rng(4751);
 
 % Paths and files
 base_path = 'RESULTS/small';
