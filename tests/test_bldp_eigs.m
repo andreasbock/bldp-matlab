@@ -77,15 +77,16 @@ for i = 1:length(ids)
             G_bregman = V_bregman * E_bregman * V_bregman';
 
             % Absolute value: SVD
+            config_abs.r = r;
             config_abs.method = 'evd';
-            p_svd = bldp.svd_preconditioner(Q, S, r, config_abs);
+            p_svd = bldp.svd_preconditioner(Q, S, config_abs);
             error_svd_exact = norm(G_r - p_svd.U * p_svd.D * p_svd.U');
 
             % Absolute value: Nyström (note that r == n!)
             config_abs.method = 'nystrom';
-            config_abs.Omega = randn(n, n);
+            config_abs.sketching_matrix = randn(n, n);
             config_abs.oversampling = 0;
-            p_nys = bldp.svd_preconditioner(Q, S, n, config_abs);
+            p_nys = bldp.svd_preconditioner(Q, S, config_abs);
             G_nys = p_nys.U * p_nys.D * p_nys.V';
             error_svd_nys = norm(G - G_nys);
 
@@ -94,9 +95,10 @@ for i = 1:length(ids)
             error_svd = error_svd_exact > tol_test || error_svd_nys > tol_test;
 
             % Bregman
+            config_breg.r = r;
             config_breg.method = 'evd';
             % full eigendecomposition
-            p_breg = bldp.bregman_preconditioner(Q, S, r, config_breg);
+            p_breg = bldp.bregman_preconditioner(Q, S, config_breg);
             error_bregman_exact = norm(G_bregman - p_breg.U * p_breg.D * p_breg.U');
 
             % Krylov-Schur
@@ -105,11 +107,11 @@ for i = 1:length(ids)
             config_breg.estimate_largest_with_nystrom = 0;
             config_breg.tol = 1e-10;
             config_breg.maxit = 150;
-            config_breg.subspace_dim = 150;
+            config_breg.subspace_dimension = 150;
 
             % Compute ratio from analytical solution
             config_breg.r_largest = sum(sign(diag(p_breg.D))==1);
-            p_breg_krs = bldp.bregman_preconditioner(Q, @(x) S*x, r, config_breg);
+            p_breg_krs = bldp.bregman_preconditioner(Q, @(x) S*x, config_breg);
             error_bregman_ks = norm(G_bregman - p_breg_krs.U * p_breg_krs.D * p_breg_krs.U');
             
             % Diagnostics

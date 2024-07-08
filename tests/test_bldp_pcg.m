@@ -63,22 +63,24 @@ for i = 1:length(ids)
 
             % Absolute value: SVD
             config_svd.method = 'evd';
-            p_svd = bldp.svd_preconditioner(Q, S, r, config_svd);
+            config_svd.r = r;
+            p_svd = bldp.svd_preconditioner(Q, S, config_svd);
             
             % Bregman %
             % full eigendecomposition
             config_breg.method = 'evd';
-            p_breg_full = bldp.bregman_preconditioner(Q, S, r, config_breg);
+            config_breg.r = r;
+            p_breg_full = bldp.bregman_preconditioner(Q, S, config_breg);
 
             % Krylov-Schur
             config_breg.method = 'krylov_schur';
             config_breg.estimate_largest_with_nystrom = 0;
             config_breg.tol = 1e-10;
             config_breg.maxit = 50;
-            config_breg.subspace_dim = r + 10;
+            config_breg.subspace_dimension = r + 10;
             config_breg.v = randn(n, 1);
             config_breg.r_largest = sum(sign(diag(p_breg_full.D))==1);
-            p_breg_krs = bldp.bregman_preconditioner(Q,  @(x) S*x, r, config_breg);
+            p_breg_krs = bldp.bregman_preconditioner(Q,  @(x) S*x, config_breg);
 
             % Preconditioned conjugate gradient method
             [~, ~, ~, it_svd] = pcg(S, b, tol_pcg, maxit_pcg, p_svd.action);

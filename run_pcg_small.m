@@ -112,7 +112,6 @@ for i = 1:length(ids)
         G = (G + G') / 2;
         eigenvalues = flip(sort(real(eig(G))));
         IplusG = I + G;
-
         nearness_measures = @ (p) condition_number_and_divergence(p, IplusG); 
 
         tic
@@ -140,11 +139,12 @@ for i = 1:length(ids)
         for ridx = flip(1:numel(rank_percentages))
             any_success = 0;
             r = max(floor(n * rank_percentages(ridx)), 2);
-            Omega = randn(n, r + oversampling);
-            config_breg.Omega = Omega;
+            sketching_matrix = randn(n, r + oversampling);
+            config_breg.sketching_matrix = sketching_matrix;
 
             % Exact SVD preconditioner
-            p_svd = bldp.svd_preconditioner(Q, S, r, config_evd);
+            config_evd.r = r;
+            p_svd = bldp.svd_preconditioner(Q, S, config_evd);
             tic
             [~, flag_svd, ~, iter_svd, resvec_svd] = pcg(S, b, tol_pcg, maxit_pcg, p_svd.action);
             stime_svd = toc;
@@ -153,30 +153,28 @@ for i = 1:length(ids)
             fprintf(csv_out, csv_format, n, "evd_exact", -1, r, relres_svd(end), iter_svd, flag_svd, p_svd.ctime, stime_svd, 1, -1, cond_svd, div_svd);
 
             % Exact Bregman preconditioner
-            p_breg_exact = bldp.bregman_preconditioner(Q, S, r, config_evd);
+            p_breg_exact = bldp.bregman_preconditioner(Q, S, config_evd);
+            [cond_breg_exact, div_breg_exact] = nearness_measures(p_breg_exact);
             tic
             [~, flag_breg_exact, ~, iter_breg_exact, resvec_breg_exact] = pcg(S, b, tol_pcg, maxit_pcg, p_breg_exact.action);
             stime_breg_exact = toc;
             relres_breg = resvec_breg_exact/norm_b;
-            [cond_breg_exact, div_breg_exact] = nearness_measures(p_breg_exact);
             fprintf(csv_out, csv_format, n, "breg_exact", -1, r, relres_breg(end), iter_breg_exact, flag_breg_exact, p_breg_exact.ctime, stime_breg_exact, 1, -1, cond_breg_exact, div_breg_exact);
             
-            % Nyström
-            config_nys.Omega = Omega;
-            p_nys = bldp.svd_preconditioner(Q, S, r, config_nys);
-            %Gnys = p_nys.U * p_nys.D * p_nys.V';
-            %eG = flip(eig(Gnys));
+            % Nyström of large positive eigenvalues
+            config_nys.sketching_matrix = sketching_matrix;
+            p_nys = bldp.svd_preconditioner(Q, S, config_nys);
             [cond_nys, div_nys] = nearness_measures(p_nys);
             tic
             [~, flag_nys, ~, iter_nys, resvec_nys] = pcg(S, b, tol_pcg, maxit_pcg, p_nys.action);
             stime_nys = toc;
-            rv_nys = resvec_nys(end)/norm_b;
 
             % Indefinite Nyström
-            config_nys_indef.Omega = Omega;
+            config_nys_indef.r = r;
+            config_nys_indef.sketching_matrix = sketching_matrix;
             indefinite_nys_indef_fails = 0;
             if ~has_already_failed(1)
-                p_nys_indef = bldp.svd_preconditioner(Q, S, r, config_nys_indef);
+                p_nys_indef = bldp.svd_preconditioner(Q, S, config_nys_indef);
                 try
                     [cond_nys_indef, div_nys_indef] = nearness_measures(p_nys_indef);
                 catch
@@ -192,21 +190,19 @@ for i = 1:length(ids)
                 tic
                 [~, flag_nys_indef, ~, iter_nys_indef, resvec_nys_indef] = pcg(S, b, tol_pcg, maxit_pcg, p_nys_indef.action);
                 stime_nys_indef = toc;
-                rv_nys_indef = resvec_nys_indef(end)/norm_b;
             end
             any_success = any_success || ~flag_nys_indef ||  ~flag_nys;
             % Bregman
-            for ratio = 0:ratio_step:1-ratio_step
-                fprintf('[id = %s] %s, n = %d, r = %d, ratio = %f\n', ...
-                        num2str(id), label, n, r, ratio);
-
+            for ratio = 0:ratio_step:1
+                fprintf('[id = %s] %s, n = %d, r = %d, ratio = %f\n', num2str(id), label, n, r, ratio);
                 matvec_count = 0;
                 config_breg.ratio = ratio;
-                config_breg.subspace_dim = r + subspace_slack;
+                config_breg.r = r;
+                config_breg.subspace_dimension = r + subspace_slack;
 
                 bregman_krylovschur_fails = 0;
                 if ~has_already_failed(1+ridx)
-                    p_breg = bldp.bregman_preconditioner(Q, S_action, r, config_breg);
+                    p_breg = bldp.bregman_preconditioner(Q, S_action, config_breg);
                     try
                         [cond_breg, div_breg] = nearness_measures(p_breg);
                     catch
@@ -229,12 +225,11 @@ for i = 1:length(ids)
                     config_breg.ratio, p_breg.diagnostics.nc, rv_breg, ...
                     iter_breg, flag_breg, p_breg.ctime, stime_breg, ...
                     matvec_count, p_breg.diagnostics.ks_flag, ...
-                    cond_breg, div_breg ...
-                );
+                    cond_breg, div_breg);
                 any_success = any_success || ~flag_breg;
             end
-            fprintf(csv_out, csv_format, n, "nys", -1, r, rv_nys, iter_nys, flag_nys, p_nys.ctime, stime_nys, 1, -1, cond_nys, div_nys);
-            fprintf(csv_out, csv_format, n, "nys_indef", -1, r, rv_nys_indef, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, 1, -1, cond_nys_indef, div_nys_indef);
+            fprintf(csv_out, csv_format, n, "nys", -1, r, resvec_nys(end)/norm_b, iter_nys, flag_nys, p_nys.ctime, stime_nys, 1, -1, cond_nys, div_nys);
+            fprintf(csv_out, csv_format, n, "nys_indef", -1, r, resvec_nys_indef(end)/norm_b, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, 1, -1, cond_nys_indef, div_nys_indef);
 
             % Plot PCG results
             path = fullfile(path_matrix, ['n=', num2str(n), '_r=', num2str(r), '_ichol=', num2str(j)]);

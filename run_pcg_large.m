@@ -112,9 +112,9 @@ for i = 1:length(ids)
         for ridx = flip(1:numel(ranks))
             any_success = 0;
             r = round(n * ranks(ridx));
-            Omega = randn(n, r + config_svd.oversampling);
+            sketching_matrix = randn(n, r + config_svd.oversampling);
             % Nyström
-            config_svd.Omega = Omega;
+            config_svd.sketching_matrix = sketching_matrix;
             if ~has_already_failed(1)
                 p_nys = bldp.svd_preconditioner(Q, S, r, config_svd);
                 tic
@@ -133,10 +133,10 @@ for i = 1:length(ids)
                         num2str(id), label, n, r, ratio);
 
                 matvec_count = 0;
-                config_breg.Omega = Omega;
+                config_breg.sketching_matrix = sketching_matrix;
                 config_breg.ratio = ratio;
                 config_breg.v = randn(n, 1);
-                config_breg.subspace_dim = r + subspace_slack;
+                config_breg.subspace_dimension = r + subspace_slack;
                 if ~has_already_failed(1+ridx)
                     p_breg = bldp.bregman_preconditioner(Q, S_action, r, config_breg);
                     tic

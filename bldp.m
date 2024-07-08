@@ -1,11 +1,11 @@
 classdef bldp 
     methods (Static = true)
 
-        function result = svd_preconditioner(Q, S, r, config)
+        function result = svd_preconditioner(Q, S, config)
             n = size(Q, 1);
             if strcmp(config.method, 'evd')
                 tic;
-                [result.U, result.D] = bldp.truncate_matrix(Q \ S / Q' - eye(n), @(x) abs(x), r);
+                [result.U, result.D] = bldp.truncate_matrix(Q \ S / Q' - eye(n), @(x) abs(x), config.r);
                 result.V = result.U;
                 result.ctime = toc;
             else
@@ -16,16 +16,16 @@ classdef bldp
                 % which Nyström approximation?
                 if strcmp(config.method, 'indefinite_nystrom')
                     tic;
-                    [result.U, result.D, result.V] = bldp.indefinite_nystrom(@(x) Q \ S(Q' \ x) - x, config.Omega, r);
+                    [result.U, result.D, result.V] = bldp.indefinite_nystrom(@(x) Q \ S(Q' \ x) - x, config.sketching_matrix, config.r);
                     result.ctime = toc;
                 elseif strcmp(config.method, 'nystrom')
                     if ~isa(S, 'function_handle')
                         S = @(x) S*x;
                     end
                     tic;
-                    [result.U, D, result.V] = bldp.nystrom(@(x) Q \ S(Q' \ x), config.Omega);
+                    [result.U, D, result.V] = bldp.nystrom(@(x) Q \ S(Q' \ x), config.sketching_matrix);
                     result.ctime = toc;
-                    result.D = D - speye(r + config.oversampling);
+                    result.D = D - speye(size(D, 1));
                 else
                     error("Invalid `method` field in `config`.")
                 end
@@ -34,12 +34,12 @@ classdef bldp
             result.action = @ (x) Q' \ (smw(Q \ x));
         end
 
-        function result = bregman_preconditioner(Q, S, r, config)
+        function result = bregman_preconditioner(Q, S, config)
             tic
             if strcmp(config.method, 'krylov_schur')
-                result = bldp.bpc_krylov_schur(Q, S, r, config);
+                result = bldp.bpc_krylov_schur(Q, S, config);
             elseif strcmp(config.method, 'evd')
-                result = bldp.bpc_evd(Q, S, r);
+                result = bldp.bpc_evd(Q, S, config.r);
                 result.diagnostics.flag = 0;
             else
                 error("Invalid `method` field in `config`.")
@@ -49,7 +49,7 @@ classdef bldp
             result.action = @ (x) Q' \ (result.action_inner(Q \ x));
         end
 
-        function result = bpc_krylov_schur(Q, S, r, config)
+        function result = bpc_krylov_schur(Q, S, config)
             if ~isa(S, 'function_handle')
                 error("S must be a function handle!");
             end
@@ -58,7 +58,7 @@ classdef bldp
             opts.maxit = config.maxit;
             opts.disp = 0;
             opts.fail = 'drop';
-            opts.p = config.subspace_dim;
+            opts.p = config.subspace_dimension;
             if ~isfield(config, 'v')
                 opts.v0 = randn(size(Q, 1), 1);
             end
@@ -71,17 +71,17 @@ classdef bldp
             if isfield(config, 'r_largest')
                 r_largest = config.r_largest;
             elseif isfield(config, 'ratio')
-                r_largest = floor(r * config.ratio);
+                r_largest = floor(config.r * config.ratio);
             else
                 error("Need to specify `ratio` or `r_largest` in config.")
             end
-            r_smallest = r - r_largest;
+            r_smallest = config.r - r_largest;
             result.diagnostics.ks_flag = 0;
 
             if r_largest > 0
                 % Estimate largest eigenvalues
                 if config.estimate_largest_with_nystrom
-                    [U, D] = bldp.nystrom(@ (x) Q \ S(Q' \ x), config.Omega);
+                    [U, D] = bldp.nystrom(@ (x) Q \ S(Q' \ x), config.sketching_matrix);
                     D = diag(D)';
                     H_max = D(1,1);
                     result.diagnostics.nc = r_largest;
@@ -93,7 +93,7 @@ classdef bldp
             else
                 % Estimate largest eigenvalue for negative shift
                 if config.estimate_largest_with_nystrom
-                    [~, H_max] = bldp.nystrom(@ (x) Q \ S(Q' \ x), config.Omega);
+                    [~, H_max] = bldp.nystrom(@ (x) Q \ S(Q' \ x), config.sketching_matrix);
                     result.diagnostics.nc = 1;
                 else
                     H_max = eigs(g, n, 1, sigma, opts);
@@ -161,12 +161,12 @@ classdef bldp
             y = x - U * y;
         end
 
-        function [U, S, V] = nystrom(A, Omega)
+        function [U, S, V] = nystrom(A, sketching_matrix)
             if ~isa(A, 'function_handle')
                 error("A must be a function handle.");
             end
-            Y = splitapply(A, Omega, 1:size(Omega, 2));
-            inner = Omega' * Y;
+            Y = splitapply(A, sketching_matrix, 1:size(sketching_matrix, 2));
+            inner = sketching_matrix' * Y;
             try
                 C = chol(inner);
                 Yhat = Y / C;
@@ -174,11 +174,11 @@ classdef bldp
                 S = S * S;
                 V = U;
             catch
-                [U, S, V] = bldp.indefinite_nystrom(A, Omega, size(Omega, 2));
+                [U, S, V] = bldp.indefinite_nystrom(A, sketching_matrix, size(sketching_matrix, 2));
             end
         end
 
-        function [U, S, V] = indefinite_nystrom(A, Omega, r)
+        function [U, S, V] = indefinite_nystrom(A, sketching_matrix, r)
             % Implements:
             % Nakatsukasa, Yuji, and Taejun Park. "Randomized low-rank
             % approximation for symmetric indefinite matrices." SIAM 
@@ -187,8 +187,8 @@ classdef bldp
             if ~isa(A, 'function_handle')
                 error("A must be a function handle.");
             end
-            Y = splitapply(A, Omega, 1:size(Omega, 2));
-            [U, S, V] = svd(Omega' * Y);
+            Y = splitapply(A, sketching_matrix, 1:size(sketching_matrix, 2));
+            [U, S, V] = svd(sketching_matrix' * Y);
             U = Y * U(:, 1:r);
             S = pinv(S(1:r, 1:r));
             V = Y * V(:, 1:r);
