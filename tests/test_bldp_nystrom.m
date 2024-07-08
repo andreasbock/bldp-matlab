@@ -69,6 +69,14 @@ if err_nys_impl > 1e-08
     error("bldp implementation differs from Nystrom!");
 end
 
+eA = real(eig(A));
+eA_rsvd_sp = real(eig(A_rsvd_sp));
+eA_nys = real(eig(A_nys_bldp_indef));
+
+max(eA), min(eA)
+max(eA_nys), min(eA_nys)
+
+
 %% INDEFINITE MATRIX
 [V, D] = eig(A);
 flip_sign = (rand(n, 1)<.5)*2 - 1;
@@ -137,8 +145,18 @@ A_rsvd_sp = O*Pi*O';
 err_nys_bldp_indef = norm(Ar - A_nys_bldp_indef);
 err_rsvd = norm(Ar - A_rsvd_sp);
 
-plot(1:n, sort(eig(A_nys_bldp_indef))); hold on;
-plot(1:n, sort(eig(A_rsvd_sp)), 'Color', 'red'); hold on;
-plot(1:n, sort(eig(Ar)), 'Color', 'black'); hold off;
+eA = real(eig(A));
+eAr = real(eig(Ar));
+eA_rsvd_sp = real(eig(A_rsvd_sp));
+eA_nys = real(eig(A_nys_bldp_indef));
+
+max(eA), min(eA)
+max(eA_nys), min(eA_nys)
+
+
+plot(1:n, sort(eA_nys)); hold on;
+plot(1:n, sort(eA_rsvd_sp), 'Color', 'red'); hold on;
+plot(1:n, sort(Ar), 'Color', 'black'); hold off;
+
 
 % TODO: finish testing somehow

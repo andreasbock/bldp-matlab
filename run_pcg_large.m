@@ -38,7 +38,7 @@ fclose(options_file);
 
 % ichol and preconditioner parameters
 retry_diagcomp = 100;
-default_diagcomp = 1;
+default_diagcomp = 0;
 default_opts_ichol.type = 'nofill';
 default_opts_ichol.droptol = 0;  % ignored if 'type' is 'nofill'
 default_opts_ichol.michol = 'off';
