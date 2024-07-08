@@ -46,7 +46,7 @@ for i = 1:length(ids)
         r = max(floor(n * r_percentage), 2);
         % Loop over ichol options
         for j = 1:numel(options)
-            fprintf("%s - %d (ichol = %d)\n", Prob.name, r, j);
+            fprintf('[id = %s] %s, n = %d, r = %d\n', num2str(id), Prob.name, n, r);
             o = options(j);
             % Compute incomplete Cholesky
             try
@@ -84,6 +84,7 @@ for i = 1:length(ids)
             % Absolute value: Nyström (note that r == n!)
             config_abs.method = 'nystrom';
             config_abs.Omega = randn(n, n);
+            config_abs.oversampling = 0;
             p_nys = bldp.svd_preconditioner(Q, S, n, config_abs);
             G_nys = p_nys.U * p_nys.D * p_nys.V';
             error_svd_nys = norm(G - G_nys);
