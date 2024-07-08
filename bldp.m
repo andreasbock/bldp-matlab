@@ -150,19 +150,20 @@ classdef bldp
             y = x - U * y;
         end
 
-        function [U, S] = nystrom(A, Omega)
+        function [U, S, V] = nystrom(A, Omega)
             if ~isa(A, 'function_handle')
                 error("A must be a function handle.");
             end
             Y = splitapply(A, Omega, 1:size(Omega, 2));
+            inner = Omega' * Y;
             try
-                C = chol(Omega' * Y);
-            catch ME
-                error("Nyström fails, inner matrix is not PSD.")
+                C = chol(inner);
+                Yhat = Y / C;
+                [U, S, V] = svd(Yhat, 'econ');
+                S = S * S;
+            catch
+                [U, S, V] = bldp.indefinite_nystrom(A, Omega, size(Omega, 2));
             end
-            Yhat = Y / C;
-            [U, S, ~] = svd(Yhat, 'econ');
-            S = S * S;
         end
 
         function [U, S, V] = indefinite_nystrom(A, Omega, r)
