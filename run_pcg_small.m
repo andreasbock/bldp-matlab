@@ -33,7 +33,7 @@ diagcomp = 0.01;
 rank_percentages = [0.01 0.05 0.1];
 
 % PCG parameters
-tol_pcg = 1e-7;
+tol_pcg = 1e-08;
 maxit_pcg = 50;
 
 % SuiteSparse matrices
@@ -56,7 +56,7 @@ for i = 1:length(ids)
     I = speye(n);
     b = randn(1, n)';
     norm_b = norm(b);
-    label = Prob.name;
+    label = replace(Prob.name, "/", "_");
     cond_S = condest(S);
     path_matrix = fullfile(base_path, label);
 
@@ -111,7 +111,6 @@ for i = 1:length(ids)
 
             path = fullfile(path_matrix, ['n=', num2str(n), '_r=', num2str(r), '_ichol=', num2str(j)]);
             mkdir(path);
-
 
             % Plot PCG results
             figure('Visible', 'off');
@@ -178,4 +177,9 @@ for i = 1:length(ids)
 end
 fclose(csv_out);
 time_end = toc(time_start);
+
+disp("All done. Files are located in:");
+disp(base_path);
+disp("Total time in minutes:");
+disp(time_end / 60);
 
