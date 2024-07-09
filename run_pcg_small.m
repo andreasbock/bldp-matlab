@@ -27,7 +27,7 @@ tol_pcg = 1e-08;
 maxit_pcg = 120;
 
 % Paths and files
-base_path = 'RESULTS/small_krylovschur';
+base_path = 'RESULTS/small';
 mkdir(base_path);
 
 csv_path = fullfile(base_path, 'csv_files');

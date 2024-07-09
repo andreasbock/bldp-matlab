@@ -12,7 +12,7 @@ classdef SuitesSparseHelper
                 % either we provide explicit names of desired matrices...
                 n_names = length(criteria.names);
                 conditions = zeros(size(index.nentries));
-                % filter based on names`
+                % filter based on `names`
                 for i = 1:n_names
                     conditions = conditions | strcmp(index.Name, criteria.names(i))';  % (transpose is important!) 
                 end
@@ -35,6 +35,12 @@ classdef SuitesSparseHelper
                 end
                 if isfield(criteria, 'real')
                     conditions = conditions & index.isReal == criteria.real;
+                end
+            end
+            if isfield(criteria, 'skip')
+                n_skip = length(criteria.skip);
+                for i = 1:n_skip
+                    conditions = conditions & ~strcmp(index.Name, criteria.skip(i))';  % (transpose is important!) 
                 end
             end
 

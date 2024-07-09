@@ -2,6 +2,7 @@ clear; clearvars; close all; beep off;
 addpath('SuiteSparse-7.1.0/ssget');
 addpath('utils');
 warning('off', 'MATLAB:MKDIR:DirectoryExists');
+rng(4751);
 
 % Globals
 global matvec_count;
@@ -13,56 +14,74 @@ config_breg.estimate_largest_with_nystrom = 1;
 config_breg.tol = 1e-04;
 config_breg.maxit = 50;
 config_breg.oversampling = oversampling;
-config_svd.method = 'nystrom';
-config_svd.oversampling = oversampling;
+config_nys.method = 'nystrom';
+config_nys.oversampling = oversampling;
+config_nys_indef.method = 'indefinite_nystrom';
+config_nys_indef.oversampling = oversampling;
+
 subspace_slack = 120;
 ratio_step = 0.25;
 
 % PCG parameters
-tol_pcg = 1e-08;
+tol_pcg = 1e-07;
 maxit_pcg = 350;
 
 % Paths and files
 base_path = 'RESULTS/large';
 mkdir(base_path);
+
+csv_path = fullfile(base_path, 'csv_files');
+mkdir(csv_path);
 csv_header = "n,label,ratio,r,res,iter,flag,ctime,stime,matvecs,ksflag\n";
 csv_format = "%d,%s,%d,%d,%.2e,%d,%d,%d,%d,%d,%d\n";
+plotting = Plotting();
+
 options_file = fopen(fullfile(base_path, "options.txt"), "w");
-fprintf(options_file,'Bregman Krylov-Schur options:\n');
-fprintf(options_file,'estimate_largest_with_nystrom = %d\n', config_breg.estimate_largest_with_nystrom);
-fprintf(options_file,'tol = %.1e\n', config_breg.tol);
-fprintf(options_file,'maxit = %d\n', config_breg.maxit);
-fprintf(options_file,'oversampling = %d\n', config_breg.oversampling);
-fprintf(options_file,'subspace_slack = %d\n', subspace_slack);
-fprintf(options_file,'tol_pcg = %.1e\n', tol_pcg);
-fprintf(options_file,'maxit_pcg = %d\n', maxit_pcg);
+fprintf(options_file, 'Bregman Krylov-Schur options:\n');
+fprintf(options_file, 'estimate_largest_with_nystrom = %d\n', config_breg.estimate_largest_with_nystrom);
+fprintf(options_file, 'tol = %.1e\n', config_breg.tol);
+fprintf(options_file, 'maxit = %d\n', config_breg.maxit);
+fprintf(options_file, 'oversampling = %d\n', oversampling);
+fprintf(options_file, 'subspace_slack = %d\n', subspace_slack);
+fprintf(options_file, 'tol_pcg = %.1e\n', tol_pcg);
+fprintf(options_file, 'maxit_pcg = %d\n', maxit_pcg);
 fclose(options_file);
 
 % ichol and preconditioner parameters
-retry_diagcomp = 100;
 default_diagcomp = 0;
-default_opts_ichol.type = 'nofill';
-default_opts_ichol.droptol = 0;  % ignored if 'type' is 'nofill'
-default_opts_ichol.michol = 'off';
-default_opts_ichol.diagcomp = default_diagcomp;
-options(1) = default_opts_ichol;
+retry_diagcomp = 1e+03;
+
+default_options.type = 'nofill';
+default_options.droptol = 0;  % ignored if 'type' is 'nofill'
+default_options.diagcomp = default_diagcomp;
+options(1) = default_options;
 
 ntols = 1;
-droptols = logspace(-5, -3, ntols);
-for i=1:numel(droptols)
+drop_tols = logspace(-2, -2, ntols);
+for i=1:numel(drop_tols)
     options(i+1).type = 'ict';
-    options(i+1).droptol = droptols(i);  % ignored if 'type' is 'nofill'
-    options(i+1).michol = 'on';
-    options(i+1).diagcomp = 0;
+    options(i+1).droptol = drop_tols(i);  % ignored if 'type' is 'nofill'
+    options(i+1).diagcomp = default_diagcomp;
 end
 
 % SuiteSparse matrices
-names = ["Pres_Poisson", "Andrews", "uni_chimera_i5", "bmwcra_1"];
+names = ["Pres_Poisson", "bmwcra_1", "cfd1", "smt", "apache1", "thermal1"];
 names = [names, "crankseg_1", "crankseg_2", "bcsstk17", "bcsstk18"];
-suitesparse_criteria.names = [names, "cfd1", "smt", "consph"];
+names = [names, "consph"];
+
+suitesparse_criteria.names = names;
+
+%suitesparse_criteria2.n_max = 125000;
+%suitesparse_criteria2.n_min = 50000;
+%suitesparse_criteria2.symmetric = 1;
+%suitesparse_criteria2.posdef = 1;
+%suitesparse_criteria2.real = 1;
+%suitesparse_criteria = suitesparse_criteria2;
 ids = SuitesSparseHelper.get(suitesparse_criteria);
 
-ranks = [0.0025, 0.0075];
+rank_percentages = [0.0025, 0.0075];
+
+ratio_step = 0.25;  % Split between approximating positive and negative eigs
 
 % Begin simulations
 time_start = tic;
@@ -72,10 +91,13 @@ for i = 1:length(ids)
     S = Prob.A;        % A is a symmetric sparse matrix
     S_action = @ (x) S_action_fn(S, x);
     label = replace(Prob.name, "/", "_");
+    path_matrix = fullfile(base_path, label);
 
     n = size(S, 1);
     b = randn(n, 1);
     norm_b = norm(b);
+    I = speye(n);
+    config_breg.v = randn(n, 1);
 
     % Compute incomplete Cholesky
     for j = 1:numel(options)
@@ -96,51 +118,63 @@ for i = 1:length(ids)
                 continue
             end
         end
+
         tic
         [~, flag_nopc, ~, iter_nopc, resvec_nopc] = pcg(S, b, tol_pcg, maxit_pcg);
         stime_nopc = toc;
+        relres_nopc = resvec_nopc / norm_b;
+
         tic
         [~, flag_ichol, ~, iter_ichol, resvec_ichol] = pcg(S, b, tol_pcg, maxit_pcg, Q, Q');
         stime_ichol = toc;
-
+        relres_ichol = resvec_ichol / norm_b;
+        
         % Write CSV header, unpreconditioned and ichol runs
-        csv_out = fopen(fullfile(base_path, [label '_ichol=' num2str(j) '.csv']), 'w');
+        csv_out = fopen(fullfile(csv_path, [label '_ichol=' num2str(j) '.csv']), 'w');
         fprintf(csv_out, csv_header);
-        fprintf(csv_out, csv_format, n, "nopc", -1, -1, resvec_nopc(end)/norm_b, iter_nopc, flag_nopc, -1, stime_nopc, 0, -1);
-        fprintf(csv_out, csv_format, n, "ichol", -1, -1, resvec_ichol(end)/norm_b, iter_ichol, flag_ichol, ctime_ichol, stime_ichol, 0, -1);
-    
-        has_already_failed = zeros(1, 1 + length(ranks));
+        fprintf(csv_out, csv_format, n, "nopc", -1, -1, relres_nopc(end), iter_nopc, flag_nopc, -1, stime_nopc, 0, -1);
+        fprintf(csv_out, csv_format, n, "ichol", -1, -1, relres_ichol(end), iter_ichol, flag_ichol, ctime_ichol, stime_ichol, 0, -1);
+
+        has_already_failed = zeros(1, 1 + length(rank_percentages));
         % Loop for ranks
-        for ridx = flip(1:numel(ranks))
+        for ridx = flip(1:numel(rank_percentages))
             any_success = 0;
-            r = round(n * ranks(ridx));
-            config_svd.r = r;
-            sketching_matrix = randn(n, config_svd.r + config_svd.oversampling);
-            % Nyström
-            config_svd.sketching_matrix = sketching_matrix;
+            r = max(floor(n * rank_percentages(ridx)), 2);
+            sketching_matrix = randn(n, r + oversampling);
+            config_breg.sketching_matrix = sketching_matrix;
+
+            % Nyström of large positive eigenvalues
+            config_nys.sketching_matrix = sketching_matrix;
+            p_nys = bldp.svd_preconditioner(Q, S, config_nys);
+            tic
+            [~, flag_nys, ~, iter_nys, resvec_nys] = pcg(S, b, tol_pcg, maxit_pcg, p_nys.action);
+            stime_nys = toc;
+
+            % Indefinite Nyström
+            config_nys_indef.r = r;
+            config_nys_indef.sketching_matrix = sketching_matrix;
+            indefinite_nys_indef_fails = 0;
             if ~has_already_failed(1)
-                p_nys = bldp.svd_preconditioner(Q, S, config_svd);
+                p_nys_indef = bldp.svd_preconditioner(Q, S, config_nys_indef);
                 tic
-                [~, flag_nys, ~, iter_nys, resvec_nys] = pcg(S, b, tol_pcg, maxit_pcg, p_nys.action);
-                stime_nys = toc;
-                rv_nys = resvec_nys(end)/norm_b;
+                [~, flag_nys_indef, ~, iter_nys_indef, resvec_nys_indef] = pcg(S, b, tol_pcg, maxit_pcg, p_nys_indef.action);
+                stime_nys_indef = toc;
             else
-                p_nys.c_time = -1;
-                flag_nys = 1; iter_nys = -1; rv_nys = -1; stime_nys = -1;
+                p_nys_indef.c_time = -1; flag_nys_indef = 1; 
+                iter_nys_indef = -1; rv_nys_indef = -1;
+                stime_nys_indef = -1;
                 has_already_failed(1) = 1;
             end
-            any_success = any_success || ~flag_nys;
+            any_success = any_success || ~flag_nys_indef ||  ~flag_nys;
             % Bregman
             for ratio = 0:ratio_step:1
-                fprintf('[id = %s] %s, n = %d, r = %d, ratio = %f\n', ...
-                        num2str(id), label, n, r, ratio);
-
+                fprintf('[id = %s] %s, n = %d, r = %d, ratio = %f\n', num2str(id), label, n, r, ratio);
                 matvec_count = 0;
-                config_breg.sketching_matrix = sketching_matrix;
-                config_breg.r = r;
                 config_breg.ratio = ratio;
-                config_breg.v = randn(n, 1);
+                config_breg.r = r;
                 config_breg.subspace_dimension = r + subspace_slack;
+
+                bregman_krylovschur_fails = 0;
                 if ~has_already_failed(1+ridx)
                     p_breg = bldp.bregman_preconditioner(Q, S_action, config_breg);
                     tic
@@ -150,22 +184,22 @@ for i = 1:length(ids)
                 else
                     p_breg.diagnostics.nc = -1;
                     p_breg.ctime = -1;
-                    flag_breg = 1; iter_breg = -1; rv_breg = -1; stime_breg = -1;
+                    flag_breg = 1; iter_breg = -1; rv_breg = -1;
+                    stime_breg = -1;
                     has_already_failed(1+ridx) = 1;
                 end
                 fprintf(csv_out, csv_format, n, "breg", ...
                     config_breg.ratio, p_breg.diagnostics.nc, rv_breg, ...
                     iter_breg, flag_breg, p_breg.ctime, stime_breg, ...
-                    matvec_count, p_breg.diagnostics.ks_flag ...
-                );
+                    matvec_count, p_breg.diagnostics.ks_flag);
                 any_success = any_success || ~flag_breg;
             end
-            fprintf(csv_out, csv_format, n, "nys", -1, r, rv_nys, iter_nys, flag_nys, p_nys.ctime, stime_nys, 1, -1);
+            fprintf(csv_out, csv_format, n, "nys", -1, r, resvec_nys(end)/norm_b, iter_nys, flag_nys, p_nys.ctime, stime_nys, 1, -1);
+            fprintf(csv_out, csv_format, n, "nys_indef", -1, r, resvec_nys_indef(end)/norm_b, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, 1, -1);
         end
         fclose(csv_out);
     end
 end
-
 time_end = toc(time_start);
 
 disp("All done. Files are located in:");
