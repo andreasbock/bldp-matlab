@@ -10,7 +10,7 @@ global matvec_count;
 % bldp options
 oversampling = 20;
 config_breg.method = 'krylov_schur';
-config_breg.estimate_largest_with_nystrom = 1;
+config_breg.estimate_largest_with_nystrom = 0;
 config_breg.tol = 1e-10;
 config_breg.maxit = 200;
 config_breg.oversampling = oversampling;
@@ -131,7 +131,10 @@ for i = 1:length(ids)
         div_ichol = bldp.bregman_divergence(I + G, I);
 
         % Write CSV header, unpreconditioned and ichol runs
-        csv_out = fopen(fullfile(csv_path, [label '_ichol=' num2str(j) '.csv']), 'w');
+        ichol_string = ['ichol_type=', opts_ichol.type, '_droptol=', ...
+                        num2str(opts_ichol.droptol), '_diagcomp=', ...
+                        num2str(opts_ichol.diagcomp)];
+        csv_out = fopen(fullfile(csv_path, [label '_' ichol_string '.csv']), 'w');
         fprintf(csv_out, csv_header);
         fprintf(csv_out, csv_format, n, "nopc", -1, -1, relres_nopc(end), iter_nopc, flag_nopc, -1, stime_nopc, 0, -1, condest(S), div_nopc);
         fprintf(csv_out, csv_format, n, "ichol", -1, -1, relres_ichol(end), iter_ichol, flag_ichol, ctime_ichol, stime_ichol, 0, -1, condest(IplusG), div_ichol);
@@ -179,7 +182,8 @@ for i = 1:length(ids)
                 p_nys_indef = bldp.svd_preconditioner(Q, S, config_nys_indef);
                 try
                     [cond_nys_indef, div_nys_indef] = nearness_measures(p_nys_indef);
-                catch
+                    rv_nys_indef = resvec_nys_indef(end)/norm_b;
+                catch 
                     indefinite_nys_indef_fails = 1;
                 end
             end
@@ -187,7 +191,7 @@ for i = 1:length(ids)
                 p_nys_indef.c_time = -1;
                 flag_nys_indef = 1; iter_nys_indef = -1; rv_nys_indef = -1;
                 stime_nys_indef = -1; cond_nys_indef = -1; div_nys_indef = -1;
-                has_already_failed(1) = 1;
+                has_already_failed(1) = 1; rv_nys_indef = -1;
             else
                 tic
                 [~, flag_nys_indef, ~, iter_nys_indef, resvec_nys_indef] = pcg(S, b, tol_pcg, maxit_pcg, p_nys_indef.action);
@@ -196,7 +200,7 @@ for i = 1:length(ids)
             any_success = any_success || ~flag_nys_indef ||  ~flag_nys;
             % Bregman
             for ratio = 0:ratio_step:1
-                fprintf('[id = %s] %s, n = %d, r = %d, ratio = %f\n', num2str(id), label, n, r, ratio);
+                fprintf('[id = %s] %s, n = %d, r = %d, ratio = %f, %s\n', num2str(id), label, n, r, ratio, ichol_string);
                 matvec_count = 0;
                 config_breg.ratio = ratio;
                 config_breg.r = r;
@@ -231,10 +235,10 @@ for i = 1:length(ids)
                 any_success = any_success || ~flag_breg;
             end
             fprintf(csv_out, csv_format, n, "nys", -1, r, resvec_nys(end)/norm_b, iter_nys, flag_nys, p_nys.ctime, stime_nys, 1, -1, cond_nys, div_nys);
-            fprintf(csv_out, csv_format, n, "nys_indef", -1, r, resvec_nys_indef(end)/norm_b, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, 1, -1, cond_nys_indef, div_nys_indef);
+            fprintf(csv_out, csv_format, n, "nys_indef", -1, r, rv_nys_indef, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, 1, -1, cond_nys_indef, div_nys_indef);
 
             % Plot PCG results
-            path = fullfile(path_matrix, ['n=', num2str(n), '_r=', num2str(r), '_ichol=', num2str(j)]);
+            path = fullfile(path_matrix, ['n=', num2str(n), '_r=', num2str(r), '_', ichol_string]);
             mkdir(path);
             figure('Visible', 'off');
 
@@ -253,6 +257,7 @@ for i = 1:length(ids)
             set(ldg, 'Location', 'northoutside', 'Orientation', 'horizontal');
             ldg.AutoUpdate = 'off';
             yline(tol_pcg, 'r--');
+            xlim([0 min(iter_nopc, maxit_pcg)]);
             exportgraphics(gcf, fullfile(path, 'pcg_convergence.pdf'));
             hold off;
             
