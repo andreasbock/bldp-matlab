@@ -10,6 +10,9 @@ function config = Plotting()
     config.font_size_title = 20;
     config.font_size_ticks = 14;
 
+    config.both_colour = '#379c37';
+    config.alpha = alpha;
+
     %% No preconditioner
     config.nopc.line_width = line_width;
     config.nopc.line_style = ':';
@@ -50,8 +53,8 @@ function config = Plotting()
     config.breg.line_width = line_width;
     config.breg.line_style = ':';
     config.breg.label = 'Bregman';
-    config.breg.marker = 'o';
-    config.breg.colour = '#2b7d19';
+    config.breg.marker = 'square';
+    config.breg.colour = 'magenta';
     config.breg.alpha = alpha;
     config.breg.size_step = size_step;
 

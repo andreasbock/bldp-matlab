@@ -11,11 +11,6 @@ classdef bldp_plot
             config = Plotting();
             svd_colour = config.svd.colour;
             breg_colour = config.breg.colour;
-            both_colour = '#379c37';
-            alpha_og = 1;
-            alpha_r = 1;
-            alpha_breg = 1;
-            alpha_both = 1;
 
             % plot Bregman curve
             sz_breg = 150;
@@ -63,10 +58,10 @@ classdef bldp_plot
             end
             
             %scatter(e, zeros(1, numel(e)), sz_original, 'black', 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', 0.8); hold on;
-            s1 = scatter(e_apx_filtered, t(e_apx_filtered), sz_breg, 'filled', 'o', 'MarkerEdgeAlpha', .10, 'MarkerFaceAlpha', alpha_breg, 'MarkerEdgeColor', breg_colour, 'MarkerFaceColor', breg_colour); hold on;
-            s2 = scatter(e_r_filtered, t(e_r_filtered), sz_svd, 'filled', 'd', 'MarkerEdgeAlpha', 1.0, 'MarkerFaceAlpha', alpha_r, 'MarkerEdgeColor', '#00ecec', 'MarkerFaceColor', svd_colour); hold on;
-            s3 = scatter(e_filtered, t(e_filtered), sz_original, 'black', 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', alpha_og); hold on;
-            s4 = scatter(e_both, t(e_both), sz_both, 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', alpha_both, 'MarkerEdgeColor', both_colour, 'MarkerFaceColor', both_colour); hold on;
+            s1 = scatter(e_apx_filtered, t(e_apx_filtered), sz_breg, 'filled', 'o', 'MarkerEdgeAlpha', .10, 'MarkerFaceAlpha', config.alpha, 'MarkerEdgeColor', breg_colour, 'MarkerFaceColor', breg_colour); hold on;
+            s2 = scatter(e_r_filtered, t(e_r_filtered), sz_svd, 'filled', 'd', 'MarkerEdgeAlpha', 1.0, 'MarkerFaceAlpha', config.alpha, 'MarkerEdgeColor', '#00ecec', 'MarkerFaceColor', svd_colour); hold on;
+            s3 = scatter(e_filtered, t(e_filtered), sz_original, 'black', 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', config.alpha); hold on;
+            s4 = scatter(e_both, t(e_both), sz_both, 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', config.alpha, 'MarkerEdgeColor', config.both_colour, 'MarkerFaceColor', config.both_colour); hold on;
             
             if log_scale
                 set(gca, 'YScale', 'log');
@@ -100,11 +95,6 @@ classdef bldp_plot
             config = Plotting();
             svd_colour = config.svd.colour;
             breg_colour = config.breg.colour;
-            both_colour = '#379c37';
-            alpha_og = 1;
-            alpha_r = 1;
-            alpha_breg = 1;
-            alpha_both = 1;
 
             % plot Bregman curve
             sz_breg = 150;
@@ -121,7 +111,9 @@ classdef bldp_plot
             r = numel(e_r);
             for i = 1:r
                 if bldp_plot.flismember(e_r(i), e_apx)
-                    e_both = [e_both e_r(i)];
+                    if abs(e_r(i)) > 1e-10
+                        e_both = [e_both e_r(i)];
+                    end
                 else
                     e_r_filtered = [e_r_filtered e_r(i)];
                 end
@@ -158,10 +150,10 @@ classdef bldp_plot
             
             e_zeros = zeros(1, numel(e));
             %scatter(e, e_zeros, sz_original, 'black', 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', 0.8); hold on;
-            s1 = scatter(shf + e_apx_filtered, t(shf + e_apx_filtered), sz_breg, 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', alpha_breg, 'MarkerEdgeColor', breg_colour, 'MarkerFaceColor', breg_colour); hold on;
-            s2 = scatter(shf + e_r_filtered, t(shf + e_r_filtered), sz_svd, 'filled', 'd', 'MarkerEdgeAlpha', 1.0, 'MarkerFaceAlpha', alpha_r, 'MarkerEdgeColor', '#00ecec', 'MarkerFaceColor', svd_colour); hold on;
-            s3 = scatter(shf + e_filtered, t(shf + e_filtered), sz_original, 'black', 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', alpha_og);
-            s4 = scatter(shf + e_both, t(shf + e_both), sz_both, 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', alpha_both, 'MarkerEdgeColor', both_colour, 'MarkerFaceColor', both_colour); hold on;
+            s1 = scatter(shf + e_apx_filtered, t(shf + e_apx_filtered), sz_breg, 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', config.alpha, 'MarkerEdgeColor', breg_colour, 'MarkerFaceColor', breg_colour); hold on;
+            s2 = scatter(shf + e_r_filtered, t(shf + e_r_filtered), sz_svd, 'filled', 'd', 'MarkerEdgeAlpha', 1.0, 'MarkerFaceAlpha', config.alpha, 'MarkerEdgeColor', '#00ecec', 'MarkerFaceColor', svd_colour); hold on;
+            s3 = scatter(shf + e_filtered, t(shf + e_filtered), sz_original, 'black', 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', config.alpha);
+            s4 = scatter(shf + e_both, t(shf + e_both), sz_both, 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', config.alpha, 'MarkerEdgeColor', config.both_colour, 'MarkerFaceColor', config.both_colour); hold on;
             
             if ylog
                 set(gca, 'YScale', 'log');
