@@ -23,7 +23,7 @@ config_nys_indef.method = 'indefinite_nystrom';
 config_nys_indef.oversampling = oversampling;
 
 % PCG parameters
-tol_pcg = 1e-08;
+tol_pcg = 1e-10;
 maxit_pcg = 120;
 
 % Paths and files
@@ -48,10 +48,12 @@ fprintf(options_file,'maxit_pcg = %d\n', maxit_pcg);
 fclose(options_file);
 
 % ichol and preconditioner parameters
+retry_diagcomp = 1e+02;
+default_diagcomp = 0;
 default_options.type = 'nofill';
 default_options.droptol = 0;  % ignored if 'type' is 'nofill'
 default_options.michol = 'off';
-default_options.diagcomp = 0;
+default_options.diagcomp = default_diagcomp;
 options(1) = default_options;
 
 ntols = 0;
@@ -60,14 +62,14 @@ for i=2:numel(droptols)
     options(i).type = 'ict';
     options(i).droptol = droptols(i);  % ignored if 'type' is 'nofill'
     options(i).michol = 'on';
-    options(i).diagcomp = 0;
+    options(i).diagcomp = default_diagcomp;
 end
-diagcomp = 0.01;
 
 % SuiteSparse matrices
-names = ["494_bus", "1138_bus", "bcsstk04", "bcsstk05", "mesh2e1"];
+names = ["494_bus", "1138_bus", "bcsstk04", "662_bus", "bcsstk05", "mesh2e1"];
 names = [names, "bcsstk08", "bcsstk22", "bcsstm07", "nos5", "lund_a"];
 suitesparse_criteria.names = names;
+
 ids = SuitesSparseHelper.get(suitesparse_criteria);
 
 rank_percentages = [0.01 0.05 0.1];
