@@ -50,6 +50,11 @@ classdef bldp_plot
                 error('We have numel(e_r_filtered) ~= numel(e_apx_filtered)');
             end
             
+            if log_scale
+                set(gca, 'YScale', 'log');
+                ylim([10^(-4) 10^4])
+            end
+
             if numel(e_r_filtered) > 0
                 yline(t(1 + e_r_filtered), 'LineStyle', '-', 'LineWidth', 1, 'Alpha', 1, 'Color', svd_colour); hold on;
             end
@@ -63,9 +68,6 @@ classdef bldp_plot
             s3 = scatter(e_filtered, t(e_filtered), sz_original, 'black', 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', config.alpha); hold on;
             s4 = scatter(e_both, t(e_both), sz_both, 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', config.alpha, 'MarkerEdgeColor', config.both_colour, 'MarkerFaceColor', config.both_colour); hold on;
             
-            if log_scale
-                set(gca, 'YScale', 'log');
-            end
             if 0
                 for i = 1:numel(e)
                     ei = e(i);
@@ -138,6 +140,13 @@ classdef bldp_plot
             if numel(e_r_filtered) ~= numel(e_apx_filtered)
                 error('numel(e_r_filtered) ~= numel(e_apx_filtered)');
             end
+
+            if ylog
+                set(gca, 'YScale', 'log');
+                ylim([10^(-4) 10^4])
+            end
+
+
             if numel(e_r_filtered) ~= 0
                 yline(t(shf + e_r_filtered), 'LineStyle', '-', 'LineWidth', 1, 'Alpha', 0.3, 'Color', svd_colour); hold on;
             end
@@ -155,9 +164,6 @@ classdef bldp_plot
             s3 = scatter(shf + e_filtered, t(shf + e_filtered), sz_original, 'black', 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', config.alpha);
             s4 = scatter(shf + e_both, t(shf + e_both), sz_both, 'filled', 'o', 'MarkerEdgeAlpha', 0.0, 'MarkerFaceAlpha', config.alpha, 'MarkerEdgeColor', config.both_colour, 'MarkerFaceColor', config.both_colour); hold on;
             
-            if ylog
-                set(gca, 'YScale', 'log');
-            end
             if 0
                 for i = 1:numel(e)
                     ei = e(i);
