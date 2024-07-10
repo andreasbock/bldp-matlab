@@ -72,7 +72,7 @@ suitesparse_criteria.names = names;
 
 ids = SuitesSparseHelper.get(suitesparse_criteria);
 
-rank_percentages = [0.01 0.05 0.1];
+rank_percentages = [0.01 0.05 0.1 0.175];
 ratio_step = 0.25;  % Split between approximating positive and negative eigs
 
 % Begin simulations
@@ -110,8 +110,8 @@ for i = 1:length(ids)
                 continue
             end
         end
-        G = full(Q \ S / Q');
-        G = (G + G') / 2;
+        G = Q \ S / Q' - eye(n);
+        G = full((G + G') / 2);
         eigenvalues = flip(sort(real(eig(G))));
         IplusG = I + G;
         nearness_measures = @ (p) condition_number_and_divergence(p, IplusG); 
@@ -257,10 +257,20 @@ for i = 1:length(ids)
             hold off;
             
             % Plot Bregman vs SVD curves
+            G_r = p_svd.U * p_svd.D * p_svd.V';
+            G_r = (G_r + G_r')/2;
+            e_svd = eig(G_r);
+            ir = abs(e_svd)>1e-11;
+            e_svd = e_svd(ir);
+            G_breg = p_breg_exact.U * p_breg_exact.D * p_breg_exact.V';
+            G_breg = (G_breg + G_breg')/2;
+            e_breg_exact = eig(G_breg);
+            ir = abs(e_breg_exact)>1e-11;
+            e_breg_exact = e_breg_exact(ir);
             for ylog = [0 1]
                 curves_path = fullfile(path, ['semilogy=', num2str(ylog)]);
-                bldp_plot.plot_bregman_curves(eigenvalues, diag(p_svd.D),  diag(p_breg_exact.D), curves_path, ylog);
-                bldp_plot.plot_svd_curve(eigenvalues, diag(p_svd.D), diag(p_breg_exact.D), curves_path, ylog);
+                bldp_plot.plot_bregman_curves(eigenvalues, e_svd,  e_breg_exact, curves_path, ylog);
+                bldp_plot.plot_svd_curve(eigenvalues, e_svd, e_breg_exact, curves_path, ylog);
             end
         end
         fclose(csv_out);
