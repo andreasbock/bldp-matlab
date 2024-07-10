@@ -24,7 +24,7 @@ config_nys_indef.oversampling = oversampling;
 
 % PCG parameters
 tol_pcg = 1e-10;
-maxit_pcg = 120;
+maxit_pcg = 100;
 
 % Paths and files
 base_path = 'RESULTS/small';
@@ -257,7 +257,6 @@ for i = 1:length(ids)
             set(ldg, 'Location', 'northoutside', 'Orientation', 'horizontal');
             ldg.AutoUpdate = 'off';
             yline(tol_pcg, 'r--');
-            xlim([0 min(iter_nopc, maxit_pcg)]);
             exportgraphics(gcf, fullfile(path, 'pcg_convergence.pdf'));
             hold off;
             
