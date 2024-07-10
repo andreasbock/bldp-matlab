@@ -10,7 +10,7 @@ maxit_pcg = 100;
 %% Example using a small matrix with truncations based on full eigendecomposition
 % Get a matrix from SuiteSparse
 suitesparse_criteria.names = "494_bus";
-ids = suitesparse_helper.get(suitesparse_criteria);
+ids = SuitesSparseHelper.get(suitesparse_criteria);
 Prob = ssget(ids(1));  % Prob is a struct (matrix, name, meta-data, ...)
 A = Prob.A;
 n = size(A, 1);
