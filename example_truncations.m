@@ -28,8 +28,6 @@ r = 30;
 
 % SVD of G
 [V, E, W] = svd(G);
-%[~, i] = sort(f(diag(D)));
-%1:r = i(end-r+1:end);
 V_svd = V(:, 1:r);
 W_svd = W(:, 1:r);
 E_svd = E(1:r, 1:r);

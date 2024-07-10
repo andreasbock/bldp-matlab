@@ -33,16 +33,26 @@ O = O(:, 1:r);
 Pi = (O' * Y) / (O' * sketching_matrix);
 A_rsvd_sp = O*Pi*O';
 
+% SVD-based truncations
+[V, E, W] = svd(A);
+V_svd = V(:, 1:r);
+W_svd = W(:, 1:r);
+E_svd = E(1:r, 1:r);
+Ar = V_svd * E_svd * W_svd';
+[U_r_bldp, E_r_bldp] = bldp.truncate_matrix(A, @(x) abs(x), r);
+Ar_bldp = U_r_bldp * E_r_bldp * U_r_bldp';
 error_sanity_check = max([ ...
     norm(A - A_nys_naive) ...
     norm(A - A_nys_bldp) ...
     norm(A - A_nys_bldp_indef) ...
-    norm(A - A_rsvd_sp)] ...
+    norm(A - A_rsvd_sp) ...
+    norm(Ar - Ar_bldp)] ...
 );
+
 if error_sanity_check > 1e-08
     error("PSD matrix: error in Nyström approximations!");
 else
-    disp("Test passed: PSD matrix, r == n.")
+    disp("Tests passed: PSD matrix, r == n.")
 end
 
 % r = n * 0.5
@@ -71,6 +81,20 @@ if err_nys_impl > 1e-08
     error("bldp implementation differs from Nystrom!");
 else
     disp("Test passed: Nyström implementation.")
+end
+
+% SVD-based truncations
+[V, E, W] = svd(A);
+V_svd = V(:, 1:r);
+W_svd = W(:, 1:r);
+E_svd = E(1:r, 1:r);
+Ar = V_svd * E_svd * W_svd';
+[U_r_bldp, E_r_bldp] = bldp.truncate_matrix(A, @(x) abs(x), r);
+Ar_bldp = U_r_bldp * E_r_bldp * U_r_bldp';
+if norm(Ar - Ar_bldp) > 1e-08
+    error("bldp truncate_matrix fails!");
+else
+    disp("Test passed: bldp truncate_matrix.");
 end
 
 eA = real(eig(A));
@@ -112,14 +136,24 @@ O = O(:, 1:r);
 Pi = (O' * Y) / (O' * sketching_matrix);
 A_rsvd_sp = O*Pi*O';
 
+% SVD-based truncations
+[V, E, W] = svd(A);
+V_svd = V(:, 1:r);
+W_svd = W(:, 1:r);
+E_svd = E(1:r, 1:r);
+Ar = V_svd * E_svd * W_svd';
+[U_r_bldp, E_r_bldp] = bldp.truncate_matrix(A, @(x) abs(x), r);
+Ar_bldp = U_r_bldp * E_r_bldp * U_r_bldp';
+
 error_sanity_check = max([ ...
     norm(A - A_nys_naive) ...
     norm(A - A_nys_bldp) ...
     norm(A - A_nys_bldp_indef) ...
-    norm(A - A_rsvd_sp)] ...
+    norm(A - A_rsvd_sp) ...
+    norm(Ar - Ar_bldp)] ...
 );
 if error_sanity_check > 1e-08
-    error("Indefinite matrix: error in Nyström approximations!");
+    error("Indefinite matrix: error in low-rank approximations!");
 else
     disp("Test passed: indefinite matrix, r == n.")
 end
@@ -147,6 +181,20 @@ A_nys_bldp_indef = U * S * V';
 O = O(:, 1:r);
 Pi = (O' * Y) / (O' * sketching_matrix);
 A_rsvd_sp = O*Pi*O';
+
+% SVD-based truncations
+[V, E, W] = svd(A);
+V_svd = V(:, 1:r);
+W_svd = W(:, 1:r);
+E_svd = E(1:r, 1:r);
+Ar = V_svd * E_svd * W_svd';
+[U_r_bldp, E_r_bldp] = bldp.truncate_matrix(A, @(x) abs(x), r);
+Ar_bldp = U_r_bldp * E_r_bldp * U_r_bldp';
+if norm(Ar - Ar_bldp) > 1e-08
+    error("bldp truncate_matrix fails!");
+else
+    disp("Test passed: bldp truncate_matrix.");
+end
 
 err_nys_bldp_indef = norm(Ar - A_nys_bldp_indef);
 err_rsvd = norm(Ar - A_rsvd_sp);
