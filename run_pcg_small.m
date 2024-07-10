@@ -10,7 +10,7 @@ global matvec_count;
 % bldp options
 oversampling = 20;
 config_breg.method = 'krylov_schur';
-config_breg.estimate_largest_with_nystrom = 0;
+config_breg.estimate_largest_with_nystrom = 1;
 config_breg.tol = 1e-10;
 config_breg.maxit = 200;
 config_breg.oversampling = oversampling;
@@ -28,6 +28,8 @@ maxit_pcg = 100;
 
 % Paths and files
 base_path = 'RESULTS/small';
+mkdir(base_path);
+base_path = fullfile(base_path, strcat('nystrom_largest_eigs=', num2str(config_breg.estimate_largest_with_nystrom)));
 mkdir(base_path);
 
 csv_path = fullfile(base_path, 'csv_files');
