@@ -10,7 +10,7 @@ global matvec_count;
 % bldp options
 oversampling = 10;
 config_breg.method = 'krylov_schur';
-config_breg.estimate_largest_with_nystrom = 1;
+config_breg.estimate_largest_with_nystrom = 0;
 config_breg.tol = 1e-04;
 config_breg.maxit = 50;
 config_breg.oversampling = oversampling;
@@ -18,7 +18,6 @@ config_nys.method = 'nystrom';
 config_nys.oversampling = oversampling;
 config_nys_indef.method = 'indefinite_nystrom';
 config_nys_indef.oversampling = oversampling;
-
 subspace_slack = 120;
 ratio_step = 0.25;
 
@@ -29,23 +28,14 @@ maxit_pcg = 350;
 % Paths and files
 base_path = 'RESULTS/large';
 mkdir(base_path);
+base_path = fullfile(base_path, strcat('nystrom_largest_eigs=', num2str(config_breg.estimate_largest_with_nystrom)));
+mkdir(base_path);
 
 csv_path = fullfile(base_path, 'csv_files');
 mkdir(csv_path);
 csv_header = "n,label,ratio,r,res,iter,flag,ctime,stime,matvecs,ksflag\n";
 csv_format = "%d,%s,%d,%d,%.2e,%d,%d,%d,%d,%d,%d\n";
 plotting = Plotting();
-
-options_file = fopen(fullfile(base_path, "options.txt"), "w");
-fprintf(options_file, 'Bregman Krylov-Schur options:\n');
-fprintf(options_file, 'estimate_largest_with_nystrom = %d\n', config_breg.estimate_largest_with_nystrom);
-fprintf(options_file, 'tol = %.1e\n', config_breg.tol);
-fprintf(options_file, 'maxit = %d\n', config_breg.maxit);
-fprintf(options_file, 'oversampling = %d\n', oversampling);
-fprintf(options_file, 'subspace_slack = %d\n', subspace_slack);
-fprintf(options_file, 'tol_pcg = %.1e\n', tol_pcg);
-fprintf(options_file, 'maxit_pcg = %d\n', maxit_pcg);
-fclose(options_file);
 
 % ichol and preconditioner parameters
 default_diagcomp = 0;
@@ -57,30 +47,35 @@ default_options.diagcomp = default_diagcomp;
 options(1) = default_options;
 
 ntols = 1;
-drop_tols = logspace(-2, -2, ntols);
+drop_tols = logspace(-4, -4, ntols);
 for i=1:numel(drop_tols)
     options(i+1).type = 'ict';
     options(i+1).droptol = drop_tols(i);  % ignored if 'type' is 'nofill'
-    options(i+1).diagcomp = default_diagcomp;
+    options(i+1).diagcomp = 0;
 end
+
+% dump options
+options_file = fopen(fullfile(base_path, "options.txt"), "w");
+fprintf(options_file, 'estimate_largest_with_nystrom = %d\n', config_breg.estimate_largest_with_nystrom);
+fprintf(options_file, 'tol = %.1e\n', config_breg.tol);
+fprintf(options_file, 'maxit = %d\n', config_breg.maxit);
+fprintf(options_file, 'oversampling = %d\n', oversampling);
+fprintf(options_file, 'subspace_slack = %d\n', subspace_slack);
+fprintf(options_file, 'tol_pcg = %.1e\n', tol_pcg);
+fprintf(options_file, 'maxit_pcg = %d\n', maxit_pcg);
+fprintf(options_file, 'drop_tols = %d\n', drop_tols);
+fprintf(options_file, 'default_diagcomp = %d\n', default_diagcomp);
+fprintf(options_file, 'retry_diagcomp = %d\n', retry_diagcomp);
+fclose(options_file);
 
 % SuiteSparse matrices
 names = ["Pres_Poisson", "bmwcra_1", "cfd1", "smt", "apache1", "thermal1"];
-names = [names, "crankseg_1", "crankseg_2", "bcsstk17", "bcsstk18"];
-names = [names, "consph"];
-
+names = [names, "crankseg_1", "crankseg_2", "bcsstk17", "bcsstk18", "consph"];
+names = ["apache1"];
 suitesparse_criteria.names = names;
-
-%suitesparse_criteria2.n_max = 125000;
-%suitesparse_criteria2.n_min = 50000;
-%suitesparse_criteria2.symmetric = 1;
-%suitesparse_criteria2.posdef = 1;
-%suitesparse_criteria2.real = 1;
-%suitesparse_criteria = suitesparse_criteria2;
 ids = SuitesSparseHelper.get(suitesparse_criteria);
 
 rank_percentages = [0.0025, 0.0075];
-
 ratio_step = 0.25;  % Split between approximating positive and negative eigs
 
 % Begin simulations
@@ -91,7 +86,6 @@ for i = 1:length(ids)
     S = Prob.A;        % A is a symmetric sparse matrix
     S_action = @ (x) S_action_fn(S, x);
     label = replace(Prob.name, "/", "_");
-    path_matrix = fullfile(base_path, label);
 
     n = size(S, 1);
     b = randn(n, 1);
@@ -130,7 +124,10 @@ for i = 1:length(ids)
         relres_ichol = resvec_ichol / norm_b;
         
         % Write CSV header, unpreconditioned and ichol runs
-        csv_out = fopen(fullfile(csv_path, [label '_ichol=' num2str(j) '.csv']), 'w');
+        ichol_string = ['_ichol_type=', opts_ichol.type, '_droptol=', ...
+                        num2str(opts_ichol.droptol), '_diagcomp=', ...
+                        num2str(opts_ichol.diagcomp)];
+        csv_out = fopen(fullfile(csv_path, [label ichol_string '.csv']), 'w');
         fprintf(csv_out, csv_header);
         fprintf(csv_out, csv_format, n, "nopc", -1, -1, relres_nopc(end), iter_nopc, flag_nopc, -1, stime_nopc, 0, -1);
         fprintf(csv_out, csv_format, n, "ichol", -1, -1, relres_ichol(end), iter_ichol, flag_ichol, ctime_ichol, stime_ichol, 0, -1);
