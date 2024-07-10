@@ -51,7 +51,7 @@ classdef SuitesSparseHelper
             [~, i] = sort (index.nnz(ids)) ;
             ids = ids(i);
 
-            fprintf('Retrieved %s matrices from SuiteSparse.\n', num2str(length(ids)));
+            fprintf('Found %s matrices.\n', num2str(length(ids)));
         end
     end
 end
