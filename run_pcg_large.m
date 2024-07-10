@@ -71,7 +71,7 @@ fclose(options_file);
 % SuiteSparse matrices
 names = ["Pres_Poisson", "bmwcra_1", "cfd1", "smt", "apache1", "thermal1"];
 names = [names, "crankseg_1", "crankseg_2", "bcsstk17", "bcsstk18", "consph"];
-names = ["apache1"];
+
 suitesparse_criteria.names = names;
 ids = SuitesSparseHelper.get(suitesparse_criteria);
 
