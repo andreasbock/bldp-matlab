@@ -24,3 +24,7 @@ directory root.
 ├── tests                      # Contains some tests.
 ├── LICENSE
 └── README.md                  # This file.
+
+## Acknowledgements
+
+This work was supported by the Novo Nordisk Foundation under grant number NNF20OC0061894.
