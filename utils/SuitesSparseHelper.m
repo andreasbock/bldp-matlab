@@ -26,7 +26,6 @@ classdef SuitesSparseHelper
                 end
                 conditions = (criteria.n_max >= index.ncols) & (index.ncols >= criteria.n_min);
                 if isfield(criteria, 'symmetric')
-                    criteria.symmetric = 1;
                     is_symmetric = index.numerical_symmetry == criteria.symmetric & index.pattern_symmetry == criteria.symmetric;
                     conditions = conditions & is_symmetric;
                 end
