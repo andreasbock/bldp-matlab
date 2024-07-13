@@ -10,7 +10,7 @@ global matvec_count;
 % bldp options
 oversampling = 20;
 config_breg.method = 'krylov_schur';
-config_breg.estimate_largest_with_nystrom = 1;
+config_breg.estimate_largest_with_nystrom = 0;
 config_breg.tol = 1e-10;
 config_breg.maxit = 200;
 config_breg.oversampling = oversampling;
@@ -50,7 +50,7 @@ csv_format = "%s,%d,%s,%.2e,%d,%d,%.2e,%.2e,%d,%d,%.2e,%.2e\n";
 % csv file for all
 csv_path_all = fullfile(base_path, 'results.csv');
 csv_out_all = fopen(csv_path_all,'w');
-csv_header_all = "Name,n,r,resnopc,resichol,ressvd,resbreg,resrbreg,iternopc,iterichol,itersvd,iterbreg,iterrbreg,condS,condichol,condsvd,condbreg,condrbreg,div_nopc,divichol,divsvd,divbreg,divrbreg,flagnopc,flagichol,flagsvd,flagbreg,flagrbreg\n";
+csv_header_all = "Name,n,r,resnopc,resichol,ressvd,resbreg,resrbreg,iternopc,iterichol,itersvd,iterbreg,iterrbreg,condnopc,condichol,condsvd,condbreg,condrbreg,divnopc,divichol,divsvd,divbreg,divrbreg,flagnopc,flagichol,flagsvd,flagbreg,flagrbreg\n";
 csv_format_all = '%s,%d,%d,%.2e,%.2e,%.2e,%.2e,%.2e,%d,%d,%d,%d,%d,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%d,%d,%d,%d,%d\n';
 fprintf(csv_out_all, csv_header_all);
 plotting = Plotting();
@@ -87,8 +87,8 @@ end
 % SuiteSparse matrices
 names = ["494_bus", "1138_bus", "bcsstk04", "662_bus", "bcsstk05"];
 names = [names, "bcsstk08", "bcsstk22", "bcsstm07", "nos5", "lund_a"];
-names = [names, "illc1850", "mesh2e1", "nsic", "p0201", "lp_gfrd_pnc"];
-names = [names, "lp_bandm", "lp_sctap1", "lp_sctap3", "QRpivot", "l9"];
+names = [names, "illc1850", "mesh2e1", "p0201", "lp_bandm"];
+names = [names, "lp_sctap1", "lp_sctap3", "l9"];
 
 suitesparse_criteria.names = names;
 ids = SuitesSparseHelper.get(suitesparse_criteria);
