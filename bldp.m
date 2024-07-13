@@ -39,7 +39,22 @@ classdef bldp
             if strcmp(config.method, 'krylov_schur')
                 result = bldp.bpc_krylov_schur(Q, S, config);
             elseif strcmp(config.method, 'evd')
-                result = bldp.bpc_evd(Q, S, config.r);
+                config.reverse = 0;
+                result = bldp.bpc_evd(Q, S, config);
+                result.diagnostics.flag = 0;
+            else
+                error("Invalid `method` field in `config`.")
+            end
+            result.V = result.U;
+            result.ctime = toc;
+            result.action = @ (x) Q' \ (result.action_inner(Q \ x));
+        end
+
+        function result = reverse_bregman_preconditioner(Q, S, config)
+            tic
+            if strcmp(config.method, 'evd')
+                config.reverse = 1;
+                result = bldp.bpc_evd(Q, S, config);
                 result.diagnostics.flag = 0;
             else
                 error("Invalid `method` field in `config`.")
@@ -132,9 +147,13 @@ classdef bldp
             result.action_inner = @ (x) bldp.SMW(result.U, result.D, result.U', x);
         end
 
-        function result = bpc_evd(Q, S, r)
-            bregman_curve = @(x) x - log(1 + x);
-            [result.U, result.D] = bldp.truncate_matrix(Q \ S / Q' - eye(size(Q, 1)), bregman_curve, r);
+        function result = bpc_evd(Q, S, config)
+            if config.reverse
+                f = @(x) 1/(1+x) + log(1 + x) - 1;
+            else
+                f = @(x) x - log(1 + x);
+            end
+            [result.U, result.D] = bldp.truncate_matrix(Q \ S / Q' - eye(size(Q, 1)), f, config.r);
             result.action_inner = @ (x) bldp.SMW(result.U, result.D, result.U', x);
         end
 
