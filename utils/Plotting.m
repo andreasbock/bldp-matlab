@@ -61,7 +61,7 @@ function config = Plotting()
     %% Reverse Bregman
     config.rbreg.line_width = line_width;
     config.rbreg.line_style = '-';
-    config.rbreg.label = 'Reverse Bregman';
+    config.rbreg.label = 'Rev. Bregman';
     config.rbreg.marker = 'pentagram';
     config.rbreg.colour = '#8e61c2';
     config.rbreg.alpha = alpha;
