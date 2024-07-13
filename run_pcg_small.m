@@ -38,6 +38,8 @@ maxit_pcg = 100;
 
 % Paths and files
 base_path = 'RESULTS/small';
+csv_path_all = fullfile(base_path, 'results.csv');
+
 mkdir(base_path);
 base_path = fullfile(base_path, strcat('nystrom_largest_eigs=', num2str(config_breg.estimate_largest_with_nystrom)));
 mkdir(base_path);
@@ -48,7 +50,6 @@ mkdir(csv_path);
 csv_header = "label,r,ratio,res,iter,flag,ctime,stime,matvecs,ksflag,cond,div\n";
 csv_format = "%s,%d,%s,%.2e,%d,%d,%.2e,%.2e,%d,%d,%.2e,%.2e\n";
 % csv file for all
-csv_path_all = fullfile(base_path, 'results.csv');
 csv_out_all = fopen(csv_path_all,'w');
 csv_header_all = "Name,n,r,resnopc,resichol,ressvd,resbreg,resrbreg,iternopc,iterichol,itersvd,iterbreg,iterrbreg,condnopc,condichol,condsvd,condbreg,condrbreg,divnopc,divichol,divsvd,divbreg,divrbreg,flagnopc,flagichol,flagsvd,flagbreg,flagrbreg\n";
 csv_format_all = '%s,%d,%d,%.2e,%.2e,%.2e,%.2e,%.2e,%d,%d,%d,%d,%d,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%d,%d,%d,%d,%d\n';
