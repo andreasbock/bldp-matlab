@@ -10,7 +10,7 @@ global matvec_count;
 % bldp options
 oversampling = 20;
 config_breg.method = 'krylov_schur';
-config_breg.estimate_largest_with_nystrom = 0;
+config_breg.estimate_largest_with_nystrom = 1;
 config_breg.tol = 1e-10;
 config_breg.maxit = 200;
 config_breg.oversampling = oversampling;
@@ -41,10 +41,17 @@ mkdir(base_path);
 base_path = fullfile(base_path, strcat('nystrom_largest_eigs=', num2str(config_breg.estimate_largest_with_nystrom)));
 mkdir(base_path);
 
+% csv file per problem instance
 csv_path = fullfile(base_path, 'csv_files');
 mkdir(csv_path);
 csv_header = "label,r,ratio,res,iter,flag,ctime,stime,matvecs,ksflag,cond,div\n";
 csv_format = "%s,%d,%s,%.2e,%d,%d,%.2e,%.2e,%d,%d,%.2e,%.2e\n";
+% csv file for all
+csv_path_all = fullfile(base_path, 'results.csv');
+csv_out_all = fopen(csv_path_all,'w');
+csv_header_all = "Name,n,r,resnopc,resichol,ressvd,resbreg,iternopc,iterichol,itersvd,iterbreg,condS,condichol,condsvd,condbreg,div_nopc,divichol,divsvd,divbreg,flagnopc,flagichol,flagsvd,flagbreg\n";
+csv_format_all = '%s,%d,%d,%.2e,%.2e,%.2e,%.2e,%d,%d,%d,%d,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%d,%d,%d,%d\n';
+fprintf(csv_out_all, csv_header_all);
 plotting = Plotting();
 
 options_file = fopen(fullfile(base_path, "options.txt"), "w");
@@ -100,6 +107,7 @@ for i = 1:length(ids)
     elseif size(Prob.A, 1) < size(Prob.A, 2)
         S = Prob.A * Prob.A';  % A is a symmetric sparse matrix
     end
+    cond_S = condest(S);
     S_action = @ (x) S_action_fn(S, x);
 
     label = replace(Prob.name, "/", "_");
@@ -134,6 +142,7 @@ for i = 1:length(ids)
         G = full((G + G') / 2);
         eigenvalues = flip(sort(real(eig(G))));
         IplusG = I + G;
+        cond_ichol = condest(IplusG);
         nearness_measures = @ (p) condition_number_and_divergence(p, IplusG); 
 
         tic
@@ -156,8 +165,8 @@ for i = 1:length(ids)
                         num2str(opts_ichol.diagcomp)];
         csv_out = fopen(fullfile(csv_path, [label '_n=' num2str(n) '_' ichol_string '.csv']), 'w');
         fprintf(csv_out, csv_header);
-        fprintf(csv_out, csv_format, label_nopc, -1, "-1", relres_nopc(end), iter_nopc, flag_nopc, -1, stime_nopc, 0, -1, condest(S), div_nopc);
-        fprintf(csv_out, csv_format, label_ichol, -1, "-1", relres_ichol(end), iter_ichol, flag_ichol, ctime_ichol, stime_ichol, 0, -1, condest(IplusG), div_ichol);
+        fprintf(csv_out, csv_format, label_nopc, -1, "-1", relres_nopc(end), iter_nopc, flag_nopc, -1, stime_nopc, 0, -1, cond_S, div_nopc);
+        fprintf(csv_out, csv_format, label_ichol, -1, "-1", relres_ichol(end), iter_ichol, flag_ichol, ctime_ichol, stime_ichol, 0, -1, cond_ichol, div_ichol);
         
         has_already_failed = zeros(1, 1 + length(rank_percentages));
         % Loop for ranks
@@ -296,6 +305,33 @@ for i = 1:length(ids)
                 bldp_plot.plot_bregman_curves(eigenvalues, e_svd,  e_breg_exact, curves_path, ylog);
                 bldp_plot.plot_svd_curve(eigenvalues, e_svd, e_breg_exact, curves_path, ylog);
             end
+
+            % Dump to CSV
+            fprintf(csv_out_all, csv_format_all, ...
+                Prob.name, ...
+                n, ...
+                r, ...
+                relres_nopc(end), ...
+                relres_ichol(end), ...
+                relres_svd(end), ...
+                relres_breg(end), ...
+                iter_nopc, ...
+                iter_ichol, ...
+                iter_svd, ...
+                iter_breg_exact, ...
+                cond_S, ...
+                cond_ichol, ...
+                cond_svd, ...
+                cond_breg_exact, ...
+                div_nopc, ...
+                div_ichol, ...
+                div_svd, ...
+                div_breg_exact, ...
+                flag_nopc, ...
+                flag_ichol, ...
+                flag_svd, ...
+                flag_breg_exact ...
+            );
         end
         fclose(csv_out);
     end
