@@ -10,7 +10,7 @@ global matvec_count;
 % bldp options
 oversampling = 20;
 config_breg.method = 'krylov_schur';
-config_breg.estimate_largest_with_nystrom = 1;
+config_breg.estimate_largest_with_nystrom = 0;
 config_breg.tol = 1e-10;
 config_breg.maxit = 200;
 config_breg.oversampling = oversampling;
@@ -22,8 +22,17 @@ config_nys.oversampling = oversampling;
 config_nys_indef.method = 'indefinite_nystrom';
 config_nys_indef.oversampling = oversampling;
 
+% for csv files
+label_nopc = "$I$";
+label_ichol = "\texttt{ichol}";
+label_evd = "$\PrecondSVD$";
+label_breg = "$\PrecondBreg$";
+label_breg_apx = @(alpha) strcat("$\PrecondBregAlpha{", num2str(alpha), "}$");
+label_nys = "$\PrecondNys$";
+label_nys_indef = "$\PrecondNysIndef$";
+
 % PCG parameters
-tol_pcg = 1e-10;
+tol_pcg = 1e-09;
 maxit_pcg = 100;
 
 % Paths and files
@@ -34,8 +43,8 @@ mkdir(base_path);
 
 csv_path = fullfile(base_path, 'csv_files');
 mkdir(csv_path);
-csv_header = "n,label,ratio,r,res,iter,flag,ctime,stime,matvecs,ksflag,cond,div\n";
-csv_format = "%d,%s,%d,%d,%.2e,%d,%d,%d,%d,%d,%d,%.2e,%.2e\n";
+csv_header = "label,r,ratio,res,iter,flag,ctime,stime,matvecs,ksflag,cond,div\n";
+csv_format = "%s,%d,%s,%.2e,%d,%d,%.2e,%.2e,%d,%d,%.2e,%.2e\n";
 plotting = Plotting();
 
 options_file = fopen(fullfile(base_path, "options.txt"), "w");
@@ -68,10 +77,12 @@ for i=2:numel(droptols)
 end
 
 % SuiteSparse matrices
-names = ["494_bus", "1138_bus", "bcsstk04", "662_bus", "bcsstk05", "mesh2e1"];
+names = ["494_bus", "1138_bus", "bcsstk04", "662_bus", "bcsstk05"];
 names = [names, "bcsstk08", "bcsstk22", "bcsstm07", "nos5", "lund_a"];
-suitesparse_criteria.names = names;
+names = [names, "illc1850", "mesh2e1", "nsic", "p0201", "lp_gfrd_pnc"];
+names = [names, "lp_bandm", "lp_sctap1", "lp_sctap3", "QRpivot", "l9"];
 
+suitesparse_criteria.names = names;
 ids = SuitesSparseHelper.get(suitesparse_criteria);
 
 rank_percentages = [0.01 0.05 0.1 0.175];
@@ -82,8 +93,15 @@ time_start = tic;
 for i = 1:length(ids)
     id = ids(i);
     Prob = ssget(id);  % Prob is a struct (matrix, name, meta-data, ...)
-    S = Prob.A;        % A is a symmetric sparse matrix
+    S = Prob.A;
+    % Check if this is a least-squares problem; symmetrise if so
+    if size(Prob.A, 1) > size(Prob.A, 2)
+        S = Prob.A' * Prob.A;
+    elseif size(Prob.A, 1) < size(Prob.A, 2)
+        S = Prob.A * Prob.A';  % A is a symmetric sparse matrix
+    end
     S_action = @ (x) S_action_fn(S, x);
+
     label = replace(Prob.name, "/", "_");
     path_matrix = fullfile(base_path, label);
 
@@ -136,10 +154,10 @@ for i = 1:length(ids)
         ichol_string = ['ichol_type=', opts_ichol.type, '_droptol=', ...
                         num2str(opts_ichol.droptol), '_diagcomp=', ...
                         num2str(opts_ichol.diagcomp)];
-        csv_out = fopen(fullfile(csv_path, [label '_' ichol_string '.csv']), 'w');
+        csv_out = fopen(fullfile(csv_path, [label '_n=' num2str(n) '_' ichol_string '.csv']), 'w');
         fprintf(csv_out, csv_header);
-        fprintf(csv_out, csv_format, n, "nopc", -1, -1, relres_nopc(end), iter_nopc, flag_nopc, -1, stime_nopc, 0, -1, condest(S), div_nopc);
-        fprintf(csv_out, csv_format, n, "ichol", -1, -1, relres_ichol(end), iter_ichol, flag_ichol, ctime_ichol, stime_ichol, 0, -1, condest(IplusG), div_ichol);
+        fprintf(csv_out, csv_format, label_nopc, -1, "-1", relres_nopc(end), iter_nopc, flag_nopc, -1, stime_nopc, 0, -1, condest(S), div_nopc);
+        fprintf(csv_out, csv_format, label_ichol, -1, "-1", relres_ichol(end), iter_ichol, flag_ichol, ctime_ichol, stime_ichol, 0, -1, condest(IplusG), div_ichol);
         
         has_already_failed = zeros(1, 1 + length(rank_percentages));
         % Loop for ranks
@@ -157,7 +175,7 @@ for i = 1:length(ids)
             stime_svd = toc;
             relres_svd = resvec_svd / norm_b;
             [cond_svd, div_svd] = nearness_measures(p_svd);
-            fprintf(csv_out, csv_format, n, "evd_exact", -1, r, relres_svd(end), iter_svd, flag_svd, p_svd.ctime, stime_svd, 1, -1, cond_svd, div_svd);
+            fprintf(csv_out, csv_format, label_evd, r, "-1", relres_svd(end), iter_svd, flag_svd, p_svd.ctime, stime_svd, 1, -1, cond_svd, div_svd);
 
             % Exact Bregman preconditioner
             p_breg_exact = bldp.bregman_preconditioner(Q, S, config_evd);
@@ -166,7 +184,7 @@ for i = 1:length(ids)
             [~, flag_breg_exact, ~, iter_breg_exact, resvec_breg_exact] = pcg(S, b, tol_pcg, maxit_pcg, p_breg_exact.action);
             stime_breg_exact = toc;
             relres_breg = resvec_breg_exact/norm_b;
-            fprintf(csv_out, csv_format, n, "breg_exact", -1, r, relres_breg(end), iter_breg_exact, flag_breg_exact, p_breg_exact.ctime, stime_breg_exact, 1, -1, cond_breg_exact, div_breg_exact);
+            fprintf(csv_out, csv_format, label_breg, r, "-1", relres_breg(end), iter_breg_exact, flag_breg_exact, p_breg_exact.ctime, stime_breg_exact, 1, -1, cond_breg_exact, div_breg_exact);
             
             % Nyström of large positive eigenvalues
             config_nys.sketching_matrix = sketching_matrix;
@@ -229,15 +247,15 @@ for i = 1:length(ids)
                     stime_breg = toc;
                     rv_breg = resvec_breg(end)/norm_b;
                 end
-                fprintf(csv_out, csv_format, n, "breg", ...
-                    config_breg.ratio, p_breg.diagnostics.nc, rv_breg, ...
-                    iter_breg, flag_breg, p_breg.ctime, stime_breg, ...
+                fprintf(csv_out, csv_format, label_breg_apx(ratio), ...
+                    p_breg.diagnostics.nc, num2str(ratio), rv_breg, iter_breg, ...
+                    flag_breg, p_breg.ctime, stime_breg, ...
                     matvec_count, p_breg.diagnostics.ks_flag, ...
                     cond_breg, div_breg);
                 any_success = any_success || ~flag_breg;
             end
-            fprintf(csv_out, csv_format, n, "nys", -1, r, resvec_nys(end)/norm_b, iter_nys, flag_nys, p_nys.ctime, stime_nys, 1, -1, cond_nys, div_nys);
-            fprintf(csv_out, csv_format, n, "nys_indef", -1, r, rv_nys_indef, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, 1, -1, cond_nys_indef, div_nys_indef);
+            fprintf(csv_out, csv_format, label_nys, r, "-1", resvec_nys(end)/norm_b, iter_nys, flag_nys, p_nys.ctime, stime_nys, 1, -1, cond_nys, div_nys);
+            fprintf(csv_out, csv_format, label_nys_indef, r, "-1", rv_nys_indef, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, 1, -1, cond_nys_indef, div_nys_indef);
 
             % Plot PCG results
             path = fullfile(path_matrix, ['n=', num2str(n), '_r=', num2str(r), '_', ichol_string]);

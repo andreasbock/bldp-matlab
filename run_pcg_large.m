@@ -8,7 +8,7 @@ rng(4751);
 global matvec_count;
 
 % bldp options
-oversampling = 10;
+oversampling = 20;
 config_breg.method = 'krylov_schur';
 config_breg.estimate_largest_with_nystrom = 0;
 config_breg.tol = 1e-04;
@@ -19,7 +19,13 @@ config_nys.oversampling = oversampling;
 config_nys_indef.method = 'indefinite_nystrom';
 config_nys_indef.oversampling = oversampling;
 subspace_slack = 120;
-ratio_step = 0.25;
+
+% for csv files
+label_nopc = "$I$";
+label_ichol = "\texttt{ichol}";
+label_breg_apx = @(alpha) strcat("$\PrecondBregAlpha{", num2str(alpha), "}$");
+label_nys = "$\PrecondNys$";
+label_nys_indef = "$\PrecondNysIndef$";
 
 % PCG parameters
 tol_pcg = 1e-07;
@@ -33,8 +39,8 @@ mkdir(base_path);
 
 csv_path = fullfile(base_path, 'csv_files');
 mkdir(csv_path);
-csv_header = "n,label,ratio,r,res,iter,flag,ctime,stime,matvecs,ksflag\n";
-csv_format = "%d,%s,%d,%d,%.2e,%d,%d,%d,%d,%d,%d\n";
+csv_header = "label,r,ratio,res,iter,flag,ctime,stime,matvecs,ksflag,cond,div\n";
+csv_format = "%s,%d,%s,%.2e,%d,%d,%.2e,%.2e,%d,%d,%.2e,%.2e\n";
 plotting = Plotting();
 
 % ichol and preconditioner parameters
@@ -129,8 +135,8 @@ for i = 1:length(ids)
                         num2str(opts_ichol.diagcomp)];
         csv_out = fopen(fullfile(csv_path, [label ichol_string '.csv']), 'w');
         fprintf(csv_out, csv_header);
-        fprintf(csv_out, csv_format, n, "nopc", -1, -1, relres_nopc(end), iter_nopc, flag_nopc, -1, stime_nopc, 0, -1);
-        fprintf(csv_out, csv_format, n, "ichol", -1, -1, relres_ichol(end), iter_ichol, flag_ichol, ctime_ichol, stime_ichol, 0, -1);
+        fprintf(csv_out, csv_format, label_nopc, -1, "-1", relres_nopc(end), iter_nopc, flag_nopc, -1, stime_nopc, 0, -1);
+        fprintf(csv_out, csv_format, label_ichol, -1, "-1", relres_ichol(end), iter_ichol, flag_ichol, ctime_ichol, stime_ichol, 0, -1);
 
         has_already_failed = zeros(1, 1 + length(rank_percentages));
         % Loop for ranks
@@ -185,14 +191,14 @@ for i = 1:length(ids)
                     stime_breg = -1;
                     has_already_failed(1+ridx) = 1;
                 end
-                fprintf(csv_out, csv_format, n, "breg", ...
-                    config_breg.ratio, p_breg.diagnostics.nc, rv_breg, ...
+                fprintf(csv_out, csv_format, label_breg_apx(ratio), ...
+                    p_breg.diagnostics.nc, num2str(ratio), rv_breg, ...
                     iter_breg, flag_breg, p_breg.ctime, stime_breg, ...
                     matvec_count, p_breg.diagnostics.ks_flag);
                 any_success = any_success || ~flag_breg;
             end
-            fprintf(csv_out, csv_format, n, "nys", -1, r, resvec_nys(end)/norm_b, iter_nys, flag_nys, p_nys.ctime, stime_nys, 1, -1);
-            fprintf(csv_out, csv_format, n, "nys_indef", -1, r, resvec_nys_indef(end)/norm_b, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, 1, -1);
+            fprintf(csv_out, csv_format, label_nys, r, "-1", resvec_nys(end)/norm_b, iter_nys, flag_nys, p_nys.ctime, stime_nys, 1, -1);
+            fprintf(csv_out, csv_format, label_nys_indef, r, "-1", resvec_nys_indef(end)/norm_b, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, 1, -1);
         end
         fclose(csv_out);
     end
