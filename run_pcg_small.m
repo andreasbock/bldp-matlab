@@ -145,7 +145,7 @@ for i = 1:length(ids)
         eigenvalues = flip(sort(real(eig(G))));
         IplusG = I + G;
         cond_ichol = condest(IplusG);
-        nearness_measures = @ (p) condition_number_and_divergence(IplusG, p); 
+        nearness_measures = @ (p) condition_number_and_divergence(p, IplusG); 
 
         tic
         [~, flag_nopc, ~, iter_nopc, resvec_nopc] = pcg(S, b, tol_pcg, maxit_pcg);
@@ -368,5 +368,5 @@ end
 
 function [condn, div] = condition_number_and_divergence(p, M)
     condn = condest(bldp.SMW(p.U, p.D, p.V', M));
-    div = bldp.bregman_divergence(M, bldp.SMW(p.U, p.D, p.V', speye(size(p.U, 1))));
+    div = bldp.bregman_divergence(M, speye(size(p.U, 1)) + p.U*p.D*p.V');
 end
