@@ -199,7 +199,7 @@ for i = 1:length(ids)
             [~, flag_breg_exact, ~, iter_breg_exact, resvec_breg_exact] = pcg(S, b, tol_pcg, maxit_pcg, p_breg_exact.action);
             stime_breg_exact = toc;
             relres_breg = resvec_breg_exact/norm_b;
-            fprintf(csv_out, csv_format, label_breg, r, "-1", relres_breg(end), iter_breg_exact, flag_breg_exact, p_breg_exact.ctime, stime_breg_exact, 1, -1, cond_breg_exact, div_breg_exact);
+            fprintf(csv_out, csv_format, label_breg, r, "-1", relres_breg(end), iter_breg_exact, flag_breg_exact, p_breg_exact.ctime, stime_breg_exact, -1, -1, cond_breg_exact, div_breg_exact);
             
             % Exact reverse Bregman preconditioner
             p_rbreg_exact = bldp.reverse_bregman_preconditioner(Q, S, config_evd);
@@ -208,9 +208,9 @@ for i = 1:length(ids)
             [~, flag_rbreg_exact, ~, iter_rbreg_exact, resvec_rbreg_exact] = pcg(S, b, tol_pcg, maxit_pcg, p_rbreg_exact.action);
             stime_rbreg_exact = toc;
             relres_rbreg = resvec_rbreg_exact/norm_b;
-            fprintf(csv_out, csv_format, label_rbreg, r, "-1", relres_rbreg(end), iter_rbreg_exact, flag_rbreg_exact, p_rbreg_exact.ctime, stime_rbreg_exact, 1, -1, cond_rbreg_exact, div_rbreg_exact);
+            fprintf(csv_out, csv_format, label_rbreg, r, "-1", relres_rbreg(end), iter_rbreg_exact, flag_rbreg_exact, p_rbreg_exact.ctime, stime_rbreg_exact, -1, -1, cond_rbreg_exact, div_rbreg_exact);
             
-            % Nyström of large positive eigenvalues
+            % Plain Nyström
             config_nys.sketching_matrix = sketching_matrix(:, 1:r + config_nys.oversampling);
             p_nys = bldp.svd_preconditioner(Q, S, config_nys);
             [cond_nys, div_nys] = nearness_measures(p_nys);
@@ -218,7 +218,7 @@ for i = 1:length(ids)
             [~, flag_nys, ~, iter_nys, resvec_nys] = pcg(S, b, tol_pcg, maxit_pcg, p_nys.action);
             stime_nys = toc;
 
-            % Indefinite Nyström
+            % Park-Nakatsukasa Nyström
             config_nys_indef.r = r;
             config_nys_indef.sketching_matrix = sketching_matrix(:, 1:r + config_nys_indef.oversampling);
             indefinite_nys_indef_fails = 0;
@@ -278,8 +278,8 @@ for i = 1:length(ids)
                     cond_breg, div_breg);
                 any_success = any_success || ~flag_breg;
             end
-            fprintf(csv_out, csv_format, label_nys, r, "-1", resvec_nys(end)/norm_b, iter_nys, flag_nys, p_nys.ctime, stime_nys, 1, -1, cond_nys, div_nys);
-            fprintf(csv_out, csv_format, label_nys_indef, r, "-1", rv_nys_indef, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, 1, -1, cond_nys_indef, div_nys_indef);
+            fprintf(csv_out, csv_format, label_nys, r, "-1", resvec_nys(end)/norm_b, iter_nys, flag_nys, p_nys.ctime, stime_nys, r + config_nys.oversampling, -1, cond_nys, div_nys);
+            fprintf(csv_out, csv_format, label_nys_indef, r, "-1", rv_nys_indef, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, r + config_nys_indef.oversampling, -1, cond_nys_indef, div_nys_indef);
 
             % Plot PCG results
             path = fullfile(path_matrix, ['n=', num2str(n), '_r=', num2str(r), '_', ichol_string]);
