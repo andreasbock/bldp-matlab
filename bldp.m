@@ -167,11 +167,8 @@ classdef bldp
         end
 
         function v = bregman_divergence(X, Y)
-            chol(X);
-            chol(Y);
             p = X / Y;
-            [~, n] = size(X);
-            v = trace(p) - log(det(p)) - n;
+            v = trace(p) - log(det(p)) - size(X, 1);
         end
 
         function y = SMW(U, C, V, x)
