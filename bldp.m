@@ -14,18 +14,18 @@ classdef bldp
                     S = @(x) S*x;
                 end
                 % which Nyström approximation?
+                mat_action = @(x) Q \ S(Q' \ x) - x;
                 if strcmp(config.method, 'indefinite_nystrom')
                     tic;
-                    [result.U, result.D, result.V] = bldp.indefinite_nystrom(@(x) Q \ S(Q' \ x) - x, config.sketching_matrix, config.r);
+                    [result.U, result.D, result.V] = bldp.indefinite_nystrom(mat_action, config.sketching_matrix, config.r);
                     result.ctime = toc;
                 elseif strcmp(config.method, 'nystrom')
                     if ~isa(S, 'function_handle')
                         S = @(x) S*x;
                     end
                     tic;
-                    [result.U, D, result.V] = bldp.nystrom(@(x) Q \ S(Q' \ x), config.sketching_matrix);
+                    [result.U, result.D, result.V] = bldp.nystrom(mat_action, config.sketching_matrix);
                     result.ctime = toc;
-                    result.D = D - speye(size(D, 1));
                 else
                     error("Invalid `method` field in `config`.")
                 end
