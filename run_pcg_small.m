@@ -13,7 +13,7 @@ config_breg.estimate_largest_with_nystrom = 0;
 config_breg.tol = 1e-10;
 config_breg.maxit = 200;
 config_breg.oversampling = 10;
-subspace_slack = 15;
+subspace_slack = 50;
 
 config_evd.method = 'evd';
 config_nys.method = 'nystrom';
