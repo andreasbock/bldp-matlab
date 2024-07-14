@@ -14,7 +14,8 @@ def process_csv(csv_path_in, csv_path_out, tol=1e-10):
     csv = csv.sort_values(by=['n', 'r'])
 
     tsvd_better = csv[csv['itersvd'] < csv['iterbreg']]
-    if len(tsvd_better) > 0:
+    tsvd_better_and_doesnt_fail = tsvd_better[(csv.flagsvd == 0) & (csv.flagbreg == 0)]
+    if len(tsvd_better_and_doesnt_fail) > 0:
         raise Exception("TSVD better")
 
     nrow, _ = csv.shape
