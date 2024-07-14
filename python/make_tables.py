@@ -19,11 +19,15 @@ def process_csv(csv_path_in, csv_path_out, tol=1e-10):
         raise Exception("TSVD better")
 
     nrow, _ = csv.shape
-    pc_names = ['nopc', 'ichol', 'svd', 'breg', 'rbreg']
+    pcs = ['ichol', 'svd', 'breg', 'rbreg']
+    pc_names = {
+        'cond': ['nopc'] + pcs,
+        'div': pcs,
+    }
     for i in range(nrow):
 
         for prefix in ['cond', 'div']:
-            indices = [prefix + tp for tp in pc_names]
+            indices = [prefix + tp for tp in pc_names[prefix]]
             _min = csv.loc[i, indices].astype(float).min()
             for idx in indices:
                 if np.isinf(csv.loc[i, idx]):
@@ -33,7 +37,7 @@ def process_csv(csv_path_in, csv_path_out, tol=1e-10):
                 else:
                     csv[idx][i] = '{:.1e}'.format(csv[idx][i])
 
-        for pc in pc_names:
+        for pc in pc_names[prefix]:
             res = 'res' + pc
             itr = 'iter' + pc
 

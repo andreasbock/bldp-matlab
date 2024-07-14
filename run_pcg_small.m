@@ -145,7 +145,7 @@ for i = 1:length(ids)
         eigenvalues = flip(sort(real(eig(G))));
         IplusG = I + G;
         cond_ichol = condest(IplusG);
-        nearness_measures = @ (p) condition_number_and_divergence(p, IplusG); 
+        nearness_measures = @ (p) condition_number_and_divergence(IplusG, p); 
 
         tic
         [~, flag_nopc, ~, iter_nopc, resvec_nopc] = pcg(S, b, tol_pcg, maxit_pcg);
@@ -159,7 +159,7 @@ for i = 1:length(ids)
 
         % Compute nearness
         div_nopc = bldp.bregman_divergence(S, I);
-        div_ichol = bldp.bregman_divergence(I + G, I);
+        div_ichol = bldp.bregman_divergence(IplusG, I);
 
         % Write CSV header, unpreconditioned and ichol runs
         ichol_string = ['ichol_type=', opts_ichol.type, '_droptol=', ...
