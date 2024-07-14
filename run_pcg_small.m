@@ -8,19 +8,18 @@ rng(4751);
 global matvec_count;
 
 % bldp options
-oversampling = 20;
 config_breg.method = 'krylov_schur';
-config_breg.estimate_largest_with_nystrom = 0;
+config_breg.estimate_largest_with_nystrom = 1;
 config_breg.tol = 1e-10;
 config_breg.maxit = 200;
-config_breg.oversampling = oversampling;
-subspace_slack = 80;
+config_breg.oversampling = 5;
+subspace_slack = 15;
 
 config_evd.method = 'evd';
 config_nys.method = 'nystrom';
-config_nys.oversampling = oversampling;
+config_nys.oversampling = 5;
 config_nys_indef.method = 'indefinite_nystrom';
-config_nys_indef.oversampling = oversampling;
+config_nys_indef.oversampling = 5;
 
 % for csv files
 label_nopc = "$I$";
@@ -61,11 +60,16 @@ fprintf(options_file,'Bregman Krylov-Schur options:\n');
 fprintf(options_file,'estimate_largest_with_nystrom = %d\n', config_breg.estimate_largest_with_nystrom);
 fprintf(options_file,'tol = %.1e\n', config_breg.tol);
 fprintf(options_file,'maxit = %d\n', config_breg.maxit);
-fprintf(options_file,'oversampling = %d\n', oversampling);
+if config_breg.estimate_largest_with_nystrom
+    fprintf(options_file,'Bregman approx oversampling = %d\n', config_breg.oversampling);
+end
+fprintf(options_file,'Nyström oversampling = %d\n', config_nys.oversampling);
+fprintf(options_file,'Indefinite Nyström oversampling = %d\n', config_nys_indef.oversampling);
 fprintf(options_file,'subspace_slack = %d\n', subspace_slack);
 fprintf(options_file,'tol_pcg = %.1e\n', tol_pcg);
 fprintf(options_file,'maxit_pcg = %d\n', maxit_pcg);
 fclose(options_file);
+max_oversampling = max([config_breg.oversampling, config_nys.oversampling, config_nys_indef.oversampling]);
 
 % ichol and preconditioner parameters
 retry_diagcomp = 1e+02;
@@ -175,7 +179,7 @@ for i = 1:length(ids)
         for ridx = flip(1:numel(rank_percentages))
             any_success = 0;
             r = max(floor(n * rank_percentages(ridx)), 2);
-            sketching_matrix = randn(n, r + oversampling);
+            sketching_matrix = randn(n, r + max_oversampling);
             config_breg.sketching_matrix = sketching_matrix;
 
             % Exact SVD preconditioner
@@ -207,7 +211,7 @@ for i = 1:length(ids)
             fprintf(csv_out, csv_format, label_rbreg, r, "-1", relres_rbreg(end), iter_rbreg_exact, flag_rbreg_exact, p_rbreg_exact.ctime, stime_rbreg_exact, 1, -1, cond_rbreg_exact, div_rbreg_exact);
             
             % Nyström of large positive eigenvalues
-            config_nys.sketching_matrix = sketching_matrix;
+            config_nys.sketching_matrix = sketching_matrix(:, 1:r + config_nys.oversampling);
             p_nys = bldp.svd_preconditioner(Q, S, config_nys);
             [cond_nys, div_nys] = nearness_measures(p_nys);
             tic
