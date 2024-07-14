@@ -34,7 +34,7 @@ def process_csv(csv_path_in, csv_path_out, maxit, tol=1e-10):
         csv['switch'][i] = int(i % 4 == 0)
         for pc in pcs:
             itr = 'iter' + pc
-            if [csv[itr][i]] == 0:# or [csv['flag' + pc][i]] != 0:
+            if [csv[itr][i]] == 0:
                 csv[itr][i] = maxit
 
         for prefix in ['cond', 'div']:
