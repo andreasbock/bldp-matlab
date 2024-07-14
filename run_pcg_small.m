@@ -9,17 +9,17 @@ global matvec_count;
 
 % bldp options
 config_breg.method = 'krylov_schur';
-config_breg.estimate_largest_with_nystrom = 1;
+config_breg.estimate_largest_with_nystrom = 0;
 config_breg.tol = 1e-10;
 config_breg.maxit = 200;
-config_breg.oversampling = 5;
+config_breg.oversampling = 10;
 subspace_slack = 15;
 
 config_evd.method = 'evd';
 config_nys.method = 'nystrom';
-config_nys.oversampling = 5;
+config_nys.oversampling = 20;
 config_nys_indef.method = 'indefinite_nystrom';
-config_nys_indef.oversampling = 5;
+config_nys_indef.oversampling = 20;
 
 % for csv files
 label_nopc = "$I$";
@@ -174,7 +174,7 @@ for i = 1:length(ids)
         fprintf(csv_out, csv_format, label_nopc, -1, "-1", relres_nopc(end), iter_nopc, flag_nopc, -1, stime_nopc, 0, -1, cond_S, div_nopc);
         fprintf(csv_out, csv_format, label_ichol, -1, "-1", relres_ichol(end), iter_ichol, flag_ichol, ctime_ichol, stime_ichol, 0, -1, cond_ichol, div_ichol);
         
-        has_already_failed = zeros(1, 1 + length(rank_percentages));
+        has_already_failed = zeros(1, 2 + length(rank_percentages));
         % Loop for ranks
         for ridx = flip(1:numel(rank_percentages))
             any_success = 0;
@@ -209,38 +209,56 @@ for i = 1:length(ids)
             stime_rbreg_exact = toc;
             relres_rbreg = resvec_rbreg_exact/norm_b;
             fprintf(csv_out, csv_format, label_rbreg, r, "-1", relres_rbreg(end), iter_rbreg_exact, flag_rbreg_exact, p_rbreg_exact.ctime, stime_rbreg_exact, -1, -1, cond_rbreg_exact, div_rbreg_exact);
-            
+
             % Plain Nyström
             config_nys.sketching_matrix = sketching_matrix(:, 1:r + config_nys.oversampling);
-            p_nys = bldp.svd_preconditioner(Q, S, config_nys);
-            [cond_nys, div_nys] = nearness_measures(p_nys);
-            tic
-            [~, flag_nys, ~, iter_nys, resvec_nys] = pcg(S, b, tol_pcg, maxit_pcg, p_nys.action);
-            stime_nys = toc;
+            nys_fails = 0;
+            if ~has_already_failed(1)
+                p_nys = bldp.svd_preconditioner(Q, S, config_nys);
+                try
+                    [cond_nys, div_nys] = nearness_measures(p_nys);
+                catch 
+                    min(eig(p_nys.U*p_nys.D*p_nys.V'))
+                    nys_fails = 1;
+                end
+            end
+            if nys_fails || has_already_failed(1)
+                p_nys_indef.c_time = -1;
+                flag_nys = 1; iter_nys = -1; rv_nys = -1;
+                stime_nys = -1; cond_nys = -1; div_nys = -1;
+                has_already_failed(1) = 1;
+            else
+                tic
+                [~, flag_nys, ~, iter_nys, resvec_nys] = pcg(S, b, tol_pcg, maxit_pcg, p_nys.action);
+                stime_nys = toc;
+                rv_nys = resvec_nys(end)/norm_b;
+            end
 
             % Park-Nakatsukasa Nyström
             config_nys_indef.r = r;
             config_nys_indef.sketching_matrix = sketching_matrix(:, 1:r + config_nys_indef.oversampling);
-            indefinite_nys_indef_fails = 0;
-            if ~has_already_failed(1)
+            nys_indef_fails = 0;
+            if ~has_already_failed(2)
                 p_nys_indef = bldp.svd_preconditioner(Q, S, config_nys_indef);
                 try
                     [cond_nys_indef, div_nys_indef] = nearness_measures(p_nys_indef);
-                    rv_nys_indef = resvec_nys_indef(end)/norm_b;
                 catch 
-                    indefinite_nys_indef_fails = 1;
+                    min(eig(p_nys_indef.U*p_nys_indef.D*p_nys_indef.V'))
+                    nys_indef_fails = 1;
                 end
             end
-            if indefinite_nys_indef_fails || has_already_failed(1)
+            if nys_indef_fails || has_already_failed(2)
                 p_nys_indef.c_time = -1;
                 flag_nys_indef = 1; iter_nys_indef = -1; rv_nys_indef = -1;
                 stime_nys_indef = -1; cond_nys_indef = -1; div_nys_indef = -1;
-                has_already_failed(1) = 1; rv_nys_indef = -1;
+                has_already_failed(2) = 1;
             else
                 tic
                 [~, flag_nys_indef, ~, iter_nys_indef, resvec_nys_indef] = pcg(S, b, tol_pcg, maxit_pcg, p_nys_indef.action);
                 stime_nys_indef = toc;
+                rv_nys_indef = resvec_nys_indef(end)/norm_b;
             end
+
             any_success = any_success || ~flag_nys_indef ||  ~flag_nys;
             % Bregman
             for ratio = 0:ratio_step:1
@@ -251,7 +269,7 @@ for i = 1:length(ids)
                 config_breg.subspace_dimension = r + subspace_slack;
 
                 bregman_krylovschur_fails = 0;
-                if ~has_already_failed(1+ridx)
+                if ~has_already_failed(2+ridx)
                     p_breg = bldp.bregman_preconditioner(Q, S_action, config_breg);
                     try
                         [cond_breg, div_breg] = nearness_measures(p_breg);
@@ -259,12 +277,12 @@ for i = 1:length(ids)
                         bregman_krylovschur_fails = 1;
                     end
                 end
-                if bregman_krylovschur_fails || has_already_failed(1+ridx)
+                if bregman_krylovschur_fails || has_already_failed(2+ridx)
                     p_breg.diagnostics.nc = -1;
                     p_breg.ctime = -1;
                     flag_breg = 1; iter_breg = -1; rv_breg = -1;
                     stime_breg = -1; cond_breg = -1; div_breg = -1;
-                    has_already_failed(1+ridx) = 1;
+                    has_already_failed(2+ridx) = 1;
                 else
                     tic
                     [~, flag_breg, ~, iter_breg, resvec_breg] = pcg(S, b, tol_pcg, maxit_pcg, p_breg.action);
@@ -278,7 +296,7 @@ for i = 1:length(ids)
                     cond_breg, div_breg);
                 any_success = any_success || ~flag_breg;
             end
-            fprintf(csv_out, csv_format, label_nys, r, "-1", resvec_nys(end)/norm_b, iter_nys, flag_nys, p_nys.ctime, stime_nys, r + config_nys.oversampling, -1, cond_nys, div_nys);
+            fprintf(csv_out, csv_format, label_nys, r, "-1", rv_nys, iter_nys, flag_nys, p_nys.ctime, stime_nys, r + config_nys.oversampling, -1, cond_nys, div_nys);
             fprintf(csv_out, csv_format, label_nys_indef, r, "-1", rv_nys_indef, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, r + config_nys_indef.oversampling, -1, cond_nys_indef, div_nys_indef);
 
             % Plot PCG results
