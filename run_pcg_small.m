@@ -180,7 +180,7 @@ for i = 1:length(ids)
             any_success = 0;
             r = max(floor(n * rank_percentages(ridx)), 2);
             sketching_matrix = randn(n, r + max_oversampling);
-            config_breg.sketching_matrix = sketching_matrix;
+            config_breg.sketching_matrix = sketching_matrix(:, 1:r + config_breg.oversampling);
 
             % Exact SVD preconditioner
             config_evd.r = r;
@@ -220,7 +220,7 @@ for i = 1:length(ids)
 
             % Indefinite Nyström
             config_nys_indef.r = r;
-            config_nys_indef.sketching_matrix = sketching_matrix;
+            config_nys_indef.sketching_matrix = sketching_matrix(:, 1:r + config_nys_indef.oversampling);
             indefinite_nys_indef_fails = 0;
             if ~has_already_failed(1)
                 p_nys_indef = bldp.svd_preconditioner(Q, S, config_nys_indef);

@@ -120,10 +120,10 @@ classdef bldp
                 error("Failed to estimate largest eigenvalues. " + ...
                       "Increase max iterations or subspace dimension.");
             end
-            eig_max = H_max(1, 1);
 
             % Estimate smallest eigenvalues
             if r_smallest > 0
+                eig_max = H_max(1, 1);
                 shg_defl = @ (x) eig_max*x - g(x);
                 [V, Dh, flag] = eigs(shg_defl, n, r_smallest, sigma, opts);
                 result.diagnostics.ks_flag = result.diagnostics.ks_flag & flag;
