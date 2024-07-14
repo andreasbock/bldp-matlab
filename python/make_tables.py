@@ -20,9 +20,10 @@ def process_csv(csv_path_in, csv_path_out, maxit, tol=1e-10):
 
     nrow, _ = csv.shape
     pcs = ['ichol', 'svd', 'breg', 'rbreg']
+    pcs_nopc = ['nopc'] + pcs
     pc_names = {
-        'cond': ['nopc'] + pcs,
-        'iter': ['nopc'] + pcs,
+        'cond': pcs_nopc,
+        'iter': pcs_nopc,
         'div': pcs,
     }
     formats = {
@@ -32,9 +33,9 @@ def process_csv(csv_path_in, csv_path_out, maxit, tol=1e-10):
     }
     for i in range(nrow):
         csv['switch'][i] = int(i % 4 == 0)
-        for pc in pcs:
+        for pc in pcs_nopc:
             itr = 'iter' + pc
-            if [csv[itr][i]] == 0:
+            if csv[itr][i] == 0 or csv['flag' + pc][i] != 0:
                 csv[itr][i] = maxit
 
         for prefix in ['cond', 'div']:
@@ -48,8 +49,10 @@ def process_csv(csv_path_in, csv_path_out, maxit, tol=1e-10):
                 else:
                     csv[idx][i] = formats[prefix].format(csv[idx][i])
 
+
         for prefix in ['iter']:
             indices = [prefix + tp for tp in pc_names[prefix]]
+            csv['switch'][i] = int(i % 4 == 0)
             nonzero_iters = csv.loc[i, indices].where(csv.loc[i, indices] > 0)
             _min = nonzero_iters.astype(float).min()
             for idx in pc_names[prefix]:
@@ -60,11 +63,6 @@ def process_csv(csv_path_in, csv_path_out, maxit, tol=1e-10):
                     csv[iteridx][i] = "\\textbf{" + formats[prefix].format(csv[iteridx][i]) + "}"
                 else:
                     csv[iteridx][i] = formats[prefix].format(csv[iteridx][i])
-
-        #for pc in pcs:
-        #    res = 'res' + pc
-        #    if np.isreal(csv[res][i]) and (csv[res][i] > tol or csv[itr][i] == 0):
-        #        csv['iter' + pc][i] = "-"
 
     csv.to_csv(csv_path_out, index=False, float_format='%.1e')
 
