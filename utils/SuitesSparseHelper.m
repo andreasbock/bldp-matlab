@@ -4,7 +4,7 @@ classdef SuitesSparseHelper
 
         function ids = get(criteria)
             % Get index of the SuiteSparse Matrix Collection
-            addpath('SuiteSparse-7.1.0/ssget');
+            addpath('SuiteSparse/ssget');
             index = ssget;
 
             % filter based on `criteria`

@@ -1,5 +1,4 @@
 clear; clearvars; close all; beep off;
-addpath('SuiteSparse/ssget');
 addpath('utils');
 warning('off', 'MATLAB:MKDIR:DirectoryExists');
 
