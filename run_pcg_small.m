@@ -19,7 +19,7 @@ config_evd.method = 'evd';
 config_nys.method = 'nystrom';
 config_nys.oversampling = 20;
 config_nys_indef.method = 'indefinite_nystrom';
-config_nys_indef.oversampling = 20;
+config_nys_indef.oversampling = 1.5;
 
 % for csv files
 label_nopc = "$I$";
@@ -69,7 +69,6 @@ fprintf(options_file,'subspace_slack = %d\n', subspace_slack);
 fprintf(options_file,'tol_pcg = %.1e\n', tol_pcg);
 fprintf(options_file,'maxit_pcg = %d\n', maxit_pcg);
 fclose(options_file);
-max_oversampling = max([config_breg.oversampling, config_nys.oversampling, config_nys_indef.oversampling]);
 
 % ichol and preconditioner parameters
 retry_diagcomp = 1e+02;
@@ -107,11 +106,15 @@ for i = 1:length(ids)
     id = ids(i);
     Prob = ssget(id);  % Prob is a struct (matrix, name, meta-data, ...)
     S = Prob.A;
+    n = min(size(S, 1), size(S, 2));
+    b = randn(n, 1);
     % Check if this is a least-squares problem; symmetrise if so
-    if size(Prob.A, 1) > size(Prob.A, 2)
-        S = Prob.A' * Prob.A;
-    elseif size(Prob.A, 1) < size(Prob.A, 2)
-        S = Prob.A * Prob.A';  % A is a symmetric sparse matrix
+    if size(S, 1) > size(S, 2)
+        S = S' * S;
+        b = S'*b;
+    elseif size(S, 1) < size(S, 2)
+        S = S * S';
+        b = S * b;
     end
     cond_S = condest(S);
     S_action = @ (x) S_action_fn(S, x);
@@ -119,8 +122,6 @@ for i = 1:length(ids)
     label = replace(Prob.name, "/", "_");
     path_matrix = fullfile(base_path, label);
 
-    n = size(S, 1);
-    b = randn(n, 1);
     norm_b = norm(b);
     I = speye(n);
     config_breg.v = randn(n, 1);
@@ -173,13 +174,15 @@ for i = 1:length(ids)
         fprintf(csv_out, csv_header);
         fprintf(csv_out, csv_format, label_nopc, -1, "-1", relres_nopc(end), iter_nopc, flag_nopc, -1, stime_nopc, 0, -1, cond_S, div_nopc);
         fprintf(csv_out, csv_format, label_ichol, -1, "-1", relres_ichol(end), iter_ichol, flag_ichol, ctime_ichol, stime_ichol, 0, -1, cond_ichol, div_ichol);
-        
         has_already_failed = zeros(1, 2 + length(rank_percentages));
+
         % Loop for ranks
         for ridx = flip(1:numel(rank_percentages))
             any_success = 0;
             r = max(floor(n * rank_percentages(ridx)), 2);
-            sketching_matrix = randn(n, r + max_oversampling);
+            cr = round(r*config_nys_indef.oversampling);
+            r_max = max([r + config_breg.oversampling, r + config_nys.oversampling, cr]);
+            sketching_matrix = randn(n, r_max);
             config_breg.sketching_matrix = sketching_matrix(:, 1:r + config_breg.oversampling);
 
             % Exact SVD preconditioner
@@ -236,7 +239,7 @@ for i = 1:length(ids)
 
             % Park-Nakatsukasa Nyström
             config_nys_indef.r = r;
-            config_nys_indef.sketching_matrix = sketching_matrix(:, 1:r + config_nys_indef.oversampling);
+            config_nys_indef.sketching_matrix = sketching_matrix(:, 1:cr);
             nys_indef_fails = 0;
             if ~has_already_failed(2)
                 p_nys_indef = bldp.svd_preconditioner(Q, S, config_nys_indef);
@@ -297,7 +300,7 @@ for i = 1:length(ids)
                 any_success = any_success || ~flag_breg;
             end
             fprintf(csv_out, csv_format, label_nys, r, "-1", rv_nys, iter_nys, flag_nys, p_nys.ctime, stime_nys, r + config_nys.oversampling, -1, cond_nys, div_nys);
-            fprintf(csv_out, csv_format, label_nys_indef, r, "-1", rv_nys_indef, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, r + config_nys_indef.oversampling, -1, cond_nys_indef, div_nys_indef);
+            fprintf(csv_out, csv_format, label_nys_indef, r, "-1", rv_nys_indef, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, r, -1, cond_nys_indef, div_nys_indef);
 
             % Plot PCG results
             path = fullfile(path_matrix, ['n=', num2str(n), '_r=', num2str(r), '_', ichol_string]);
