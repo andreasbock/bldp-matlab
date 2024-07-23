@@ -17,7 +17,7 @@ config_breg.oversampling = oversampling;
 config_nys.method = 'nystrom';
 config_nys.oversampling = oversampling;
 config_nys_indef.method = 'indefinite_nystrom';
-config_nys_indef.oversampling = oversampling;
+config_nys_indef.oversampling = 1.5;
 subspace_slack = 120;
 
 % for csv files
@@ -39,8 +39,8 @@ mkdir(base_path);
 
 csv_path = fullfile(base_path, 'csv_files');
 mkdir(csv_path);
-csv_header = "label,r,ratio,res,iter,flag,ctime,stime,matvecs,ksflag,cond,div\n";
-csv_format = "%s,%d,%s,%.2e,%d,%d,%.2e,%.2e,%d,%d,%.2e,%.2e\n";
+csv_header = "label,r,ratio,res,iter,flag,ctime,stime,matvecs,ksflag\n";
+csv_format = "%s,%d,%s,%.2e,%d,%d,%.2e,%.2e,%d,%d\n";
 plotting = Plotting();
 
 % ichol and preconditioner parameters
@@ -143,11 +143,15 @@ for i = 1:length(ids)
         for ridx = flip(1:numel(rank_percentages))
             any_success = 0;
             r = max(floor(n * rank_percentages(ridx)), 2);
-            sketching_matrix = randn(n, r + oversampling);
-            config_breg.sketching_matrix = sketching_matrix;
+            cr = round(r*config_nys_indef.oversampling);
+            r_max = max([r + config_breg.oversampling, r + config_nys.oversampling, cr]);
+            sketching_matrix = randn(n, r_max);
+
+            config_breg.sketching_matrix = sketching_matrix(:, 1:r + config_breg.oversampling);
 
             % Nyström of large positive eigenvalues
-            config_nys.sketching_matrix = sketching_matrix;
+            config_nys.sketching_matrix = sketching_matrix(:, 1:r + config_nys.oversampling);
+
             p_nys = bldp.svd_preconditioner(Q, S, config_nys);
             tic
             [~, flag_nys, ~, iter_nys, resvec_nys] = pcg(S, b, tol_pcg, maxit_pcg, p_nys.action);
@@ -155,7 +159,7 @@ for i = 1:length(ids)
 
             % Indefinite Nyström
             config_nys_indef.r = r;
-            config_nys_indef.sketching_matrix = sketching_matrix;
+            config_nys_indef.sketching_matrix = sketching_matrix(:, 1:cr);
             indefinite_nys_indef_fails = 0;
             if ~has_already_failed(1)
                 p_nys_indef = bldp.svd_preconditioner(Q, S, config_nys_indef);
@@ -197,8 +201,8 @@ for i = 1:length(ids)
                     matvec_count, p_breg.diagnostics.ks_flag);
                 any_success = any_success || ~flag_breg;
             end
-            fprintf(csv_out, csv_format, label_nys, r, "-1", resvec_nys(end)/norm_b, iter_nys, flag_nys, p_nys.ctime, stime_nys, 1, -1);
-            fprintf(csv_out, csv_format, label_nys_indef, r, "-1", resvec_nys_indef(end)/norm_b, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, 1, -1);
+            fprintf(csv_out, csv_format, label_nys, r, "-1", resvec_nys(end)/norm_b, iter_nys, flag_nys, p_nys.ctime, stime_nys, r, -1);
+            fprintf(csv_out, csv_format, label_nys_indef, r, "-1", resvec_nys_indef(end)/norm_b, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, cr, -1);
         end
         fclose(csv_out);
     end
