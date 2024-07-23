@@ -1,7 +1,7 @@
 clear; clearvars; close all; beep off;
 
 % for suitesparse_helper
-addpath('SuiteSparse-7.1.0/ssget');
+addpath('SuiteSparse/ssget');
 addpath('utils');  
 
 tol_pcg = 1e-08;

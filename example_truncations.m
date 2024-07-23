@@ -7,7 +7,7 @@
 % `bldp.m` library with more scalable/realistic implementations of what
 % goes on in this script.
 
-addpath('SuiteSparse-7.1.0/ssget');
+addpath('SuiteSparse/ssget');
 addpath('utils');
 
 % Set up Sx=b
