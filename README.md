@@ -6,7 +6,7 @@ This package implements the preconditioners in [1] in MATLAB.
 
 ## Installation
 
-The examples we show depend on SuiteSparse. Download and place it in the
+Just clone this repository. Our scripts depend on SuiteSparse; download and place it in the
 directory root.
 
 ## Repository structure
