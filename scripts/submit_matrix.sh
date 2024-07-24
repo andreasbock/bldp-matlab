@@ -15,7 +15,7 @@
 # -- Error File --
 #BSUB -e Error_%J.txt
 # -- estim6ted wall clock time (execution time): hh:mm -- 
-#BSUB -W 04:00 
+#BSUB -W 10:00 
 # -- Number of cores requested -- 
 #BSUB -n 20
 # -- Specify the distribution of the cores: on a single node --
