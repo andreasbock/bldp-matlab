@@ -47,15 +47,14 @@ default_options.type = 'nofill';
 default_options.droptol = 0;  % ignored if 'type' is 'nofill'
 options(1) = default_options;
 
-ntols = 4;
-drop_tols = logspace(-4, -1, ntols);
+drop_tols = [0];
 for i=1:numel(drop_tols)
     options(i+1).type = 'ict';
     options(i+1).droptol = drop_tols(i);  % ignored if 'type' is 'nofill'
 end
-ndiagcomp = 4;
-diagcomps = logspace(-3, -1, ndiagcomp-1);
-diagcomps(end+1) = -1;  % set later!
+diagcomps = [0, 1e-02];
+diagcomps(end+1) = -1;  % set later dynamically!
+ndiagcomp = numel(diagcomps);
 
 % dump options
 options_file = fopen(fullfile(base_path, "options.txt"), "w");
