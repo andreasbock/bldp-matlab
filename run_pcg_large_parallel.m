@@ -71,7 +71,7 @@ fprintf(options_file, 'diagcomp = %d\n', diagcomps);
 fclose(options_file);
 
 % Fetch matrix
-suitesparse_criteria.names = [getenv('MATRIX_NAME')];
+suitesparse_criteria.names = [string(getenv("MATRIX_NAME"))];
 ids = SuitesSparseHelper.get(suitesparse_criteria);
 
 rank_percentages = [0.0025, 0.0075];
