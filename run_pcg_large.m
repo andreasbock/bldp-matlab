@@ -17,7 +17,7 @@ config_nys.method = 'nystrom';
 config_nys.oversampling = oversampling;
 config_nys_indef.method = 'indefinite_nystrom';
 config_nys_indef.oversampling = 1.5;
-subspace_slack = 120;
+subspace_slack = 100;
 
 % for csv files
 label_nopc = "$I$";
@@ -43,21 +43,19 @@ csv_format = "%s,%d,%s,%.2e,%d,%d,%.2e,%.2e,%d,%d\n";
 plotting = Plotting();
 
 % ichol and preconditioner parameters
-default_diagcomp = 0;
-retry_diagcomp = 1e+03;
-
 default_options.type = 'nofill';
 default_options.droptol = 0;  % ignored if 'type' is 'nofill'
-default_options.diagcomp = default_diagcomp;
 options(1) = default_options;
 
-ntols = 1;
-drop_tols = logspace(-4, -4, ntols);
+ntols = 4;
+drop_tols = logspace(-4, -1, ntols);
 for i=1:numel(drop_tols)
     options(i+1).type = 'ict';
     options(i+1).droptol = drop_tols(i);  % ignored if 'type' is 'nofill'
-    options(i+1).diagcomp = 0;
 end
+ndiagcomp = 4;
+diagcomps = logspace(-3, -1, ndiagcomp-1);
+diagcomps(end+1) = -1;  % set later!
 
 % dump options
 options_file = fopen(fullfile(base_path, "options.txt"), "w");
@@ -69,8 +67,7 @@ fprintf(options_file, 'subspace_slack = %d\n', subspace_slack);
 fprintf(options_file, 'tol_pcg = %.1e\n', tol_pcg);
 fprintf(options_file, 'maxit_pcg = %d\n', maxit_pcg);
 fprintf(options_file, 'drop_tols = %d\n', drop_tols);
-fprintf(options_file, 'default_diagcomp = %d\n', default_diagcomp);
-fprintf(options_file, 'retry_diagcomp = %d\n', retry_diagcomp);
+fprintf(options_file, 'diagcomp = %d\n', diagcomps);
 fclose(options_file);
 
 % SuiteSparse matrices
@@ -103,23 +100,27 @@ for i = 1:nids
     % Compute incomplete Cholesky
     for j = 1:numel(options)
         opts_ichol = options(j);
-        try
-            tic
-            Q = ichol(S, opts_ichol);
-            ctime_ichol = toc;
-        catch ME
-            fprintf('\t ichol failed (diagcomp = %d): %s\n \t Retrying with diagcomp = %d\n', opts_ichol.diagcomp, ME.message, retry_diagcomp);
-            opts_ichol.diagcomp = retry_diagcomp;
+        ichol_success = 0;
+        for kk = 1:numel(diagcomps)
+            if kk == ndiagcomp
+                % don't want to compute this if we have to
+                diagcomps(end) = max(sum(abs(S), 2)./diag(S))-2;
+            end
+            opts_ichol.diagcomp = diagcomps(kk);
             try
                 tic
                 Q = ichol(S, opts_ichol);
                 ctime_ichol = toc;
-            catch ME2
-                fprintf('\t\t ichol STILL failed, abandoning: %s\n', ME.message);
-                continue
+                ichol_success = 1;
+                break;
+            catch ME
+                fprintf('\t ichol failed with diagcomp = %d: %s\n', opts_ichol.diagcomp, ME.message);
             end
         end
-
+        if ~ichol_success
+            fprintf('\t\t ichol failed for all options, abandoning.\n');
+            continue;
+        end
         tic
         [~, flag_nopc, ~, iter_nopc, resvec_nopc] = pcg(S, b, tol_pcg, maxit_pcg);
         stime_nopc = toc;
@@ -133,7 +134,9 @@ for i = 1:nids
         % Write CSV header, unpreconditioned and ichol runs
         ichol_string = ['_ichol_type=', opts_ichol.type, '_droptol=', ...
                         num2str(opts_ichol.droptol), '_diagcomp=', ...
-                        num2str(opts_ichol.diagcomp)];
+                        num2str(opts_ichol.diagcomp), ...
+                        '_nnzS=', num2str(nnz(S)), ...
+                        '_nnzQ=', num2str(nnz(Q))];
         csv_out = fopen(fullfile(csv_path, [label ichol_string '.csv']), 'w');
         fprintf(csv_out, csv_header);
         fprintf(csv_out, csv_format, label_nopc, -1, "-1", relres_nopc(end), iter_nopc, flag_nopc, -1, stime_nopc, 0, -1);
