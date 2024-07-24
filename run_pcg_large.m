@@ -85,7 +85,8 @@ ratio_step = 0.25;  % Split between approximating positive and negative eigs
 
 % Begin simulations
 time_start = tic;
-for i = 1:length(ids)
+nids = length(ids);
+for i = 1:nids
     id = ids(i);
     Prob = ssget(id);  % Prob is a struct (matrix, name, meta-data, ...)
     S = Prob.A;        % A is a symmetric sparse matrix
@@ -97,6 +98,7 @@ for i = 1:length(ids)
     norm_b = norm(b);
     I = speye(n);
     config_breg.v = randn(n, 1);
+    progress = i/nids;
 
     % Compute incomplete Cholesky
     for j = 1:numel(options)
@@ -174,7 +176,7 @@ for i = 1:length(ids)
             any_success = any_success || ~flag_nys_indef ||  ~flag_nys;
             % Bregman
             for ratio = 0:ratio_step:1
-                fprintf('[id = %s] %s, n = %d, r = %d, ratio = %f\n', num2str(id), label, n, r, ratio);
+                fprintf('[%0.2f%%] %s, n = %d, r = %d, ratio = %f\n', progress, label, n, r, ratio);
                 matvec_count = 0;
                 config_breg.ratio = ratio;
                 config_breg.r = r;
