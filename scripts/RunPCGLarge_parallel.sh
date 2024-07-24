@@ -8,5 +8,5 @@ declare -a names=("Pres_Poisson" "bmwcra_1" "cfd1" "smt" "apache1" "thermal1" "c
 for i in "${names[@]}"
 do
    echo "$i"
-   bsub -env "MATRIX_NAME=$i" < scripts/submit_matrix.sh;
+   bsub -J "$i" -env "MATRIX_NAME=$i" < scripts/submit_matrix.sh;
 done
