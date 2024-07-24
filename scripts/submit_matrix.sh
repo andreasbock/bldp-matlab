@@ -1,7 +1,7 @@
 #!/bin/sh
 # embedded options to bsub - start with #BSUB
 # -- our name ---
-#BSUB -J BLDPLargeParallel
+##BSUB -J BLDPLargeParallel
 # -- choose queue --
 #BSUB -q hpc
 # -- specify that we need 4GB of memory per core/slot -- 
@@ -23,4 +23,4 @@
 # -- end of LSF options -- 
 
 # -- commands you want to execute -- 
-matlab -batch run_pcg_large_parallel > MatlabOutput_run_pcg_largep_"$MATRIX_NAME";
+matlab -batch run_pcg_large_parallel > MatlabOutput_run_pcg_largep_"$MATRIX_NAME".txt
