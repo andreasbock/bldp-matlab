@@ -1,5 +1,5 @@
 .old*
 RESULTS*
 SuiteSparse*
-KrylovSchur*
 *.asv
+python/.*
