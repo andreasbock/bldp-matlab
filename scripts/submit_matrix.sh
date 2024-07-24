@@ -7,7 +7,7 @@
 # -- specify that we need 4GB of memory per core/slot -- 
 #BSUB -R "rusage[mem=2GB]"
 # -- Notify me by email when execution begins --
-#BSUB -B
+##BSUB -B
 # -- Notify me by email when execution ends   --
 #BSUB -N
 # -- Output File --
@@ -17,7 +17,7 @@
 # -- estim6ted wall clock time (execution time): hh:mm -- 
 #BSUB -W 04:00 
 # -- Number of cores requested -- 
-#BSUB -n 8
+#BSUB -n 20
 # -- Specify the distribution of the cores: on a single node --
 #BSUB -R "span[hosts=1]"
 # -- end of LSF options -- 
