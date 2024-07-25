@@ -47,7 +47,7 @@ default_options.type = 'nofill';
 default_options.droptol = 0;  % ignored if 'type' is 'nofill'
 options(1) = default_options;
 
-drop_tols = [0];
+drop_tols = [1e-01];
 for i=1:numel(drop_tols)
     options(i+1).type = 'ict';
     options(i+1).droptol = drop_tols(i);  % ignored if 'type' is 'nofill'
