@@ -149,7 +149,7 @@ classdef bldp
 
         function result = bpc_evd(Q, S, config)
             if config.reverse
-                f = @(x) 1/(1+x) + log(1 + x) - 1;
+                f = @(x) 1./(1+x) + log(1 + x) - 1;
             else
                 f = @(x) x - log(1 + x);
             end
