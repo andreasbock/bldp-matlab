@@ -5,11 +5,11 @@
 # -- choose queue --
 #BSUB -q hpc
 # -- specify that we need 4GB of memory per core/slot -- 
-#BSUB -R "rusage[mem=2GB]"
+#BSUB -R "rusage[mem=4GB]"
 # -- Notify me by email when execution begins --
 ##BSUB -B
 # -- Notify me by email when execution ends   --
-#BSUB -N
+##BSUB -N
 # -- Output File --
 #BSUB -o Output_%J.txt
 # -- Error File --
@@ -23,4 +23,4 @@
 # -- end of LSF options -- 
 
 # -- commands you want to execute -- 
-matlab -batch run_pcg_large_parallel > MatlabOutput_run_pcg_largep_"$MATRIX_NAME".txt
+matlab -batch run_pcg_large_parallel > MatlabOutput_run_pcg_largep_"$MATRIX_NAME"_"$NYSTROM".txt
