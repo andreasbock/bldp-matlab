@@ -68,19 +68,15 @@ def process_csv(csv_path_in, csv_path_out, maxit, tol=1e-10):
 
 def process_csv_individual(csv_path_in, csv_path_out, maxit, tol=1e-10):
     csv = load_csv(csv_path_in)
-    csv = csv.sort_values(by=['r']).replace(-1, "")
+    csv = csv.sort_values(by=['r']).replace(-1, "-")
     csv.to_csv(csv_path_out, index=False, float_format='%.1e')
 
 
 if __name__ == '__main__':
-    tol = 1e-09
-    maxit = 100
     csv_in = Path('../RESULTS/small/results.csv')
     csv_out = Path('../RESULTS/small/results_out.csv')
-    process_csv(csv_in, csv_out, maxit=maxit, tol=tol)
+    process_csv(csv_in, csv_out, maxit=100, tol=1e-09)
 
-    tol = 1e-09
-    maxit = 100
     hpc_root = 'RESULTS_HPC'
     hpc_root_processed = f"{hpc_root}_tex"
     Path(f"../{hpc_root_processed}").mkdir(exist_ok=True)
@@ -90,4 +86,4 @@ if __name__ == '__main__':
         print(f"Processing {csv_in_path.name}...")
         csv_out_path = Path(str(csv_in_path).replace(hpc_root, hpc_root_processed))
         csv_out_path.parent.mkdir(parents=True, exist_ok=True)
-        process_csv_individual(csv_in_path, csv_out_path, maxit, tol)
+        process_csv_individual(csv_in_path, csv_out_path, 350, 1e-07)

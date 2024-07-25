@@ -21,10 +21,10 @@ subspace_slack = 100;
 
 % for csv files
 label_nopc = "$I$";
-label_ichol = "\texttt{ichol}";
-label_breg_apx = @(alpha) strcat("$\PrecondBregAlpha{", num2str(alpha), "}$");
-label_nys = "$\PrecondNys$";
-label_nys_indef = "$\PrecondNysIndef$";
+label_ichol = "\CSVICHOL";
+label_breg_apx = @(alpha) strcat("$\CSVPrecondBregAlpha{", num2str(alpha), "}$");
+label_nys = "$\CSVPrecondNys$";
+label_nys_indef = "$\CSVPrecondNysIndef$";
 
 % PCG parameters
 tol_pcg = 1e-07;
@@ -136,7 +136,7 @@ for j = 1:numel(options)
 
     has_already_failed = zeros(1, 1 + length(rank_percentages));
     % Loop for ranks
-    for ridx = flip(1:numel(rank_percentages))
+    for ridx = 1:numel(rank_percentages)
         any_success = 0;
         r = max(floor(n * rank_percentages(ridx)), 2);
         cr = round(r*config_nys_indef.oversampling);

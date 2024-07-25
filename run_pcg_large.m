@@ -21,10 +21,10 @@ subspace_slack = 100;
 
 % for csv files
 label_nopc = "$I$";
-label_ichol = "\texttt{ichol}";
-label_breg_apx = @(alpha) strcat("$\PrecondBregAlpha{", num2str(alpha), "}$");
-label_nys = "$\PrecondNys$";
-label_nys_indef = "$\PrecondNysIndef$";
+label_ichol = "\CSVICHOL";
+label_breg_apx = @(alpha) strcat("$\CSVPrecondBregAlpha{", num2str(alpha), "}$");
+label_nys = "$\CSVPrecondNys$";
+label_nys_indef = "$\CSVPrecondNysIndef$";
 
 % PCG parameters
 tol_pcg = 1e-07;
@@ -47,15 +47,14 @@ default_options.type = 'nofill';
 default_options.droptol = 0;  % ignored if 'type' is 'nofill'
 options(1) = default_options;
 
-ntols = 4;
-drop_tols = logspace(-4, -1, ntols);
+drop_tols = [1e-01];
 for i=1:numel(drop_tols)
     options(i+1).type = 'ict';
     options(i+1).droptol = drop_tols(i);  % ignored if 'type' is 'nofill'
 end
-ndiagcomp = 4;
-diagcomps = logspace(-3, -1, ndiagcomp-1);
-diagcomps(end+1) = -1;  % set later!
+diagcomps = [0, 1e-02];
+diagcomps(end+1) = -1;  % set later dynamically!
+ndiagcomp = numel(diagcomps);
 
 % dump options
 options_file = fopen(fullfile(base_path, "options.txt"), "w");
@@ -144,7 +143,7 @@ for i = 1:nids
 
         has_already_failed = zeros(1, 1 + length(rank_percentages));
         % Loop for ranks
-        for ridx = flip(1:numel(rank_percentages))
+        for ridx = 1:numel(rank_percentages)
             any_success = 0;
             r = max(floor(n * rank_percentages(ridx)), 2);
             cr = round(r*config_nys_indef.oversampling);
