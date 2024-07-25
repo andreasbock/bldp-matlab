@@ -9,7 +9,7 @@ global matvec_count;
 % bldp options
 oversampling = 20;
 config_breg.method = 'krylov_schur';
-config_breg.estimate_largest_with_nystrom = 0;
+config_breg.estimate_largest_with_nystrom = str2num(getenv("NYSTROM"));
 config_breg.tol = 1e-04;
 config_breg.maxit = 50;
 config_breg.oversampling = oversampling;
