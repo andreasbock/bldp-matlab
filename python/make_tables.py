@@ -66,10 +66,17 @@ def process_csv(csv_path_in, csv_path_out, maxit, tol=1e-10):
     csv.to_csv(csv_path_out, index=False, float_format='%.1e')
 
 
-def process_csv_individual(csv_path_in, csv_path_out, maxit, tol=1e-10):
+def process_csv_individual_tex(csv_path_in, csv_path_out):
     csv = load_csv(csv_path_in)
-    csv = csv.sort_values(by=['r']).replace(-1, "-")
-    csv.to_csv(csv_path_out, index=False, float_format='%.1e')
+    csv = csv.drop(['flag', 'ksflag'], axis=1).replace(-1, "-")
+    csv['ratio'] = csv['ratio'].apply(lambda x: '{:.2f}'.format(x) if isinstance(x, float) else x)
+    csv_string = csv.to_csv(header=None, index=False, float_format='%.1e', lineterminator='\\\\')
+    csv_string = csv_string.replace("$\PrecondBregAlpha{0}$", "\multirow{5}{*}{$S(\\alpha)$}")
+    for ratio in ["0.25", "0.5", "0.75", "1"]:
+        csv_string = csv_string.replace(f"$\PrecondBregAlpha{{{ratio}}}$", "")
+    csv_string = csv_string.replace(",", " & ").replace("\"", "")
+    with open(csv_path_out, "w") as f:
+        f.write(csv_string)
 
 
 if __name__ == '__main__':
@@ -86,4 +93,4 @@ if __name__ == '__main__':
         print(f"Processing {csv_in_path.name}...")
         csv_out_path = Path(str(csv_in_path).replace(hpc_root, hpc_root_processed))
         csv_out_path.parent.mkdir(parents=True, exist_ok=True)
-        process_csv_individual(csv_in_path, csv_out_path, 350, 1e-07)
+        process_csv_individual_tex(csv_in_path, csv_out_path)
