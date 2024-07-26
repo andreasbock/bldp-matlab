@@ -1,7 +1,7 @@
 clear; clearvars; close all; beep off;
 addpath('utils');
 warning('off', 'MATLAB:MKDIR:DirectoryExists');
-rng(4751);
+%rng(4751);
 
 % Globals
 global matvec_count;
@@ -31,7 +31,7 @@ label_nys = "$\PrecondNys$";
 label_nys_indef = "$\PrecondNysIndef$";
 
 % PCG parameters
-tol_pcg = 1e-09;
+tol_pcg = 1e-10;
 maxit_pcg = 100;
 
 % Paths and files
@@ -301,9 +301,48 @@ for i = 1:length(ids)
             fprintf(csv_out, csv_format, label_nys, r, "-1", rv_nys, iter_nys, flag_nys, p_nys.ctime, stime_nys, r + config_nys.oversampling, -1, cond_nys, div_nys);
             fprintf(csv_out, csv_format, label_nys_indef, r, "-1", rv_nys_indef, iter_nys_indef, flag_nys_indef, p_nys_indef.ctime, stime_nys_indef, r, -1, cond_nys_indef, div_nys_indef);
 
-            % Plot PCG results
             path = fullfile(path_matrix, ['n=', num2str(n), '_r=', num2str(r), '_', ichol_string]);
             mkdir(path);
+
+            % Plot Bregman vs SVD curves
+            G_r = p_svd.U * p_svd.D * p_svd.V';
+            G_r = (G_r + G_r')/2;
+            e_svd = eig(G_r);
+            ir = abs(e_svd)>1e-11;
+            e_svd = e_svd(ir);
+            
+            G_rbreg = p_rbreg_exact.U * p_rbreg_exact.D * p_rbreg_exact.V';
+            G_rbreg = (G_rbreg + G_rbreg')/2;
+            e_rbreg_exact = eig(G_rbreg);
+            ir = abs(e_rbreg_exact)>1e-11;
+            e_rbreg_exact = e_rbreg_exact(ir);
+
+            G_breg = p_breg_exact.U * p_breg_exact.D * p_breg_exact.V';
+            G_breg = (G_breg + G_breg')/2;
+            e_breg_exact = eig(G_breg);
+            ir = abs(e_breg_exact)>1e-11;
+            e_breg_exact = e_breg_exact(ir);
+            for ylog = [0 1]
+                curves_path = fullfile(path, ['semilogy=', num2str(ylog)]);
+                bldp_plot.plot_bregman_curves(eigenvalues, e_breg_exact,  e_breg_exact, curves_path, ylog);
+                bldp_plot.plot_svd_curve(eigenvalues, e_svd, e_breg_exact, curves_path, ylog);
+            end
+
+            % Plot spectra
+            line_width = 1.8;
+            font_size = 16;
+            x = 1:n;
+            figure('Visible', 'off');
+            plot(x, flip(sort(eigenvalues)), 'DisplayName', '$\tilde E$', 'LineStyle', '-', 'LineWidth', line_width);
+            xlabel('$n$', 'Interpreter', 'latex', 'FontSize', font_size);
+            ylabel('Eigenvalue', 'Interpreter', 'latex', 'FontSize', font_size);
+            ldg = legend;
+            set(ldg, 'Interpreter', 'latex', 'FontSize', font_size);
+            grid on;
+            exportgraphics(gcf, fullfile(path, 'eigenvalues.pdf'));
+            hold off;
+
+            % Plot PCG results
             figure('Visible', 'off');
 
             plot_resvec(relres_nopc, plotting.nopc);
@@ -325,22 +364,6 @@ for i = 1:length(ids)
             exportgraphics(gcf, fullfile(path, 'pcg_convergence.pdf'));
             hold off;
             
-            % Plot Bregman vs SVD curves
-            G_r = p_svd.U * p_svd.D * p_svd.V';
-            G_r = (G_r + G_r')/2;
-            e_svd = eig(G_r);
-            ir = abs(e_svd)>1e-11;
-            e_svd = e_svd(ir);
-            G_breg = p_breg_exact.U * p_breg_exact.D * p_breg_exact.V';
-            G_breg = (G_breg + G_breg')/2;
-            e_breg_exact = eig(G_breg);
-            ir = abs(e_breg_exact)>1e-11;
-            e_breg_exact = e_breg_exact(ir);
-            for ylog = [0 1]
-                curves_path = fullfile(path, ['semilogy=', num2str(ylog)]);
-                bldp_plot.plot_bregman_curves(eigenvalues, e_svd,  e_breg_exact, curves_path, ylog);
-                bldp_plot.plot_svd_curve(eigenvalues, e_svd, e_breg_exact, curves_path, ylog);
-            end
             % Dump to CSV
             fprintf(csv_out_all, csv_format_all, ...
                 Prob.name, ...
