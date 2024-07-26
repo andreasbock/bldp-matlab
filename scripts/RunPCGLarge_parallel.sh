@@ -8,6 +8,6 @@ do
     for i in "${names[@]}"
     do
         echo "$i"
-        bsub -J "NYS=$j_$i" -env "MATRIX_NAME=$i, NYSTROM=$j" < scripts/submit_matrix.sh;
+        bsub -J "$i-$j" -env "MATRIX_NAME=$i, NYSTROM=$j" < scripts/submit_matrix.sh;
     done
 done
