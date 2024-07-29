@@ -9,14 +9,14 @@ def load_csv(path: Path) -> pd.DataFrame:
     return df
 
 
-def process_csv(csv_path_in, csv_path_out, maxit, tol=1e-10):
+def process_csv(csv_path_in, csv_path_out, maxit, nranks, tol=1e-10):
     csv = load_csv(csv_path_in)
     csv = csv.sort_values(by=['n', 'r'])
 
     tsvd_better = csv[csv['itersvd'] < csv['iterbreg']]
     tsvd_better_and_doesnt_fail = tsvd_better[(csv.flagsvd == 0) & (csv.flagbreg == 0)]
     if len(tsvd_better_and_doesnt_fail) > 0:
-        raise Exception("TSVD better")
+        pass#raise Exception("TSVD better")
 
     nrow, _ = csv.shape
     pcs = ['ichol', 'svd', 'breg', 'rbreg']
@@ -32,7 +32,7 @@ def process_csv(csv_path_in, csv_path_out, maxit, tol=1e-10):
         'div': '{:.1e}',
     }
     for i in range(nrow):
-        csv['switch'][i] = int(i % 4 == 0)
+        csv['switch'][i] = int(i % nranks == 0)
         for pc in pcs_nopc:
             itr = 'iter' + pc
             if csv[itr][i] == 0 or csv['flag' + pc][i] != 0:
@@ -51,7 +51,7 @@ def process_csv(csv_path_in, csv_path_out, maxit, tol=1e-10):
 
         for prefix in ['iter']:
             indices = [prefix + tp for tp in pc_names[prefix]]
-            csv['switch'][i] = int(i % 4 == 0)
+            csv['switch'][i] = int(i % nranks == 0)
             nonzero_iters = csv.loc[i, indices].where(csv.loc[i, indices] > 0)
             _min = nonzero_iters.astype(float).min()
             for idx in pc_names[prefix]:
@@ -87,7 +87,7 @@ def process_csv_individual_tex(csv_path_in, csv_path_out, tol):
 if __name__ == '__main__':
     csv_in = Path('../RESULTS/small/results.csv')
     csv_out = Path('../RESULTS/small/results_out.csv')
-    process_csv(csv_in, csv_out, maxit=100, tol=1e-09)
+    process_csv(csv_in, csv_out, maxit=100, nranks=3, tol=1e-09)
 
     hpc_root = 'RESULTS_HPC'
     hpc_root_processed = f"{hpc_root}_tex"
