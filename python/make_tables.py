@@ -66,10 +66,15 @@ def process_csv(csv_path_in, csv_path_out, maxit, tol=1e-10):
     csv.to_csv(csv_path_out, index=False, float_format='%.1e')
 
 
-def process_csv_individual_tex(csv_path_in, csv_path_out):
+def process_csv_individual_tex(csv_path_in, csv_path_out, tol):
     csv = load_csv(csv_path_in)
     csv = csv.drop(['flag', 'ksflag'], axis=1).replace(-1, "-")
     csv['ratio'] = csv['ratio'].apply(lambda x: '{:.2f}'.format(x) if isinstance(x, float) else x)
+
+    # Defining a function to apply
+    mask_converged = csv.res > tol
+    csv.loc[mask_converged, 'iter'] = "-"
+
     csv_string = csv.to_csv(header=None, index=False, float_format='%.1e', lineterminator='\\\\')
     csv_string = csv_string.replace("$\CSVPrecondBregAlpha{0}$", "\multirow{5}{*}{$\CSVPrecondBregAlpha{\alpha}$}")
     for ratio in ["0.25", "0.5", "0.75", "1"]:
@@ -93,4 +98,4 @@ if __name__ == '__main__':
         print(f"Processing {csv_in_path.name}...")
         csv_out_path = Path(str(csv_in_path).replace(hpc_root, hpc_root_processed))
         csv_out_path.parent.mkdir(parents=True, exist_ok=True)
-        process_csv_individual_tex(csv_in_path, csv_out_path)
+        process_csv_individual_tex(csv_in_path, csv_out_path, tol=1e-07)
