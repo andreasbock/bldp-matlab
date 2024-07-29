@@ -1,15 +1,9 @@
 #!/bin/sh
 # embedded options to bsub - start with #BSUB
-# -- our name ---
-##BSUB -J BLDPLargeParallel
 # -- choose queue --
 #BSUB -q hpc
 # -- specify that we need 4GB of memory per core/slot -- 
 #BSUB -R "rusage[mem=4GB]"
-# -- Notify me by email when execution begins --
-##BSUB -B
-# -- Notify me by email when execution ends   --
-##BSUB -N
 # -- Output File --
 #BSUB -o Output_%J.txt
 # -- Error File --

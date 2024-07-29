@@ -71,9 +71,9 @@ def process_csv_individual_tex(csv_path_in, csv_path_out):
     csv = csv.drop(['flag', 'ksflag'], axis=1).replace(-1, "-")
     csv['ratio'] = csv['ratio'].apply(lambda x: '{:.2f}'.format(x) if isinstance(x, float) else x)
     csv_string = csv.to_csv(header=None, index=False, float_format='%.1e', lineterminator='\\\\')
-    csv_string = csv_string.replace("$\PrecondBregAlpha{0}$", "\multirow{5}{*}{$S(\\alpha)$}")
+    csv_string = csv_string.replace("$\CSVPrecondBregAlpha{0}$", "\multirow{5}{*}{$\CSVPrecondBregAlpha{\alpha}$}")
     for ratio in ["0.25", "0.5", "0.75", "1"]:
-        csv_string = csv_string.replace(f"$\PrecondBregAlpha{{{ratio}}}$", "")
+        csv_string = csv_string.replace(f"$\CSVPrecondBregAlpha{{{ratio}}}$", "")
     csv_string = csv_string.replace(",", " & ").replace("\"", "")
     with open(csv_path_out, "w") as f:
         f.write(csv_string)
