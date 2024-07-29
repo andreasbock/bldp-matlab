@@ -16,10 +16,11 @@ def process_csv(csv_path_in, csv_path_out, maxit, nranks, tol=1e-10):
     tsvd_better = csv[csv['itersvd'] < csv['iterbreg']]
     tsvd_better_and_doesnt_fail = tsvd_better[(csv.flagsvd == 0) & (csv.flagbreg == 0)]
     if len(tsvd_better_and_doesnt_fail) > 0:
-        pass#raise Exception("TSVD better")
+        raise Exception("TSVD better")
 
     nrow, _ = csv.shape
-    pcs = ['ichol', 'svd', 'breg', 'rbreg']
+    pcs_lowrank = ['svd', 'breg', 'rbreg']
+    pcs = ['ichol'] + pcs_lowrank
     pcs_nopc = ['nopc'] + pcs
     pc_names = {
         'cond': pcs_nopc,
@@ -62,6 +63,16 @@ def process_csv(csv_path_in, csv_path_out, maxit, nranks, tol=1e-10):
                     csv[iteridx][i] = "\\textbf{" + formats[prefix].format(csv[iteridx][i]) + "}"
                 else:
                     csv[iteridx][i] = formats[prefix].format(csv[iteridx][i])
+
+        eq_header = {
+            'BeqR': ['iterbreg', 'iterrbreg'],
+            'BeqS': ['iterbreg', 'itersvd'],
+            'ReqS': ['iterrbreg', 'itersvd'],
+        }
+        for eq in eq_header.keys():
+            if csv[eq][i] == 1:
+                for v in eq_header[eq]:
+                    csv[v][i] = f"{csv[v][i]}$^\\dagger$"
 
     csv.to_csv(csv_path_out, index=False, float_format='%.1e')
 
