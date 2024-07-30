@@ -49,10 +49,11 @@ csv_header = "label,r,ratio,res,iter,flag,ctime,stime,matvecs,ksflag,cond,div\n"
 csv_format = "%s,%d,%s,%.2e,%d,%d,%.2e,%.2e,%d,%d,%.2e,%.2e\n";
 % csv file for all
 csv_out_all = fopen(csv_path_all,'w');
-csv_header_all = "Name,n,r,resnopc,resichol,ressvd,resbreg,resrbreg,iternopc,iterichol,itersvd,iterbreg,iterrbreg,condnopc,condichol,condsvd,condbreg,condrbreg,divnopc,divichol,divsvd,divbreg,divrbreg,flagnopc,flagichol,flagsvd,flagbreg,flagrbreg,switch\n";
-csv_format_all = '%s,%d,%d,%.2e,%.2e,%.2e,%.2e,%.2e,%d,%d,%d,%d,%d,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%d,%d,%d,%d,%d,%d\n';
+csv_header_all = "Name,n,r,resnopc,resichol,ressvd,resbreg,resrbreg,iternopc,iterichol,itersvd,iterbreg,iterrbreg,condnopc,condichol,condsvd,condbreg,condrbreg,divnopc,divichol,divsvd,divbreg,divrbreg,flagnopc,flagichol,flagsvd,flagbreg,flagrbreg,switch,BeqR,BeqS,ReqS\n";
+csv_format_all = '%s,%d,%d,%.2e,%.2e,%.2e,%.2e,%.2e,%d,%d,%d,%d,%d,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%.2e,%d,%d,%d,%d,%d,%d,%d,%d,%d\n';
 fprintf(csv_out_all, csv_header_all);
 plotting = Plotting();
+eq_tol = 1e-11;
 
 options_file = fopen(fullfile(base_path, "options.txt"), "w");
 fprintf(options_file,'Bregman Krylov-Schur options:\n');
@@ -328,6 +329,10 @@ for i = 1:length(ids)
                 bldp_plot.plot_svd_curve(eigenvalues, e_svd, e_breg_exact, curves_path, ylog);
             end
 
+            breg_equal_rbreg = norm(G_breg - G_rbreg) < eq_tol;
+            breg_equal_svd = norm(G_breg - G_r) < eq_tol;
+            rbreg_equal_svd = norm(G_rbreg - G_r) < eq_tol;
+
             % Plot spectra
             line_width = 1.8;
             font_size = 16;
@@ -394,7 +399,10 @@ for i = 1:length(ids)
                 flag_svd, ...
                 flag_breg_exact, ...
                 flag_rbreg_exact, ...
-                0 ...
+                0, ...
+                breg_equal_rbreg, ...
+                breg_equal_svd, ...
+                rbreg_equal_svd ...
             );
         end
         fclose(csv_out);
