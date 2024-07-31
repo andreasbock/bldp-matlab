@@ -1,7 +1,6 @@
 clear; clearvars; close all; beep off;
 addpath('utils');
 warning('off', 'MATLAB:MKDIR:DirectoryExists');
-%rng(4751);
 
 % Globals
 global matvec_count;
@@ -325,7 +324,7 @@ for i = 1:length(ids)
             e_breg_exact = e_breg_exact(ir);
             for ylog = [0 1]
                 curves_path = fullfile(path, ['semilogy=', num2str(ylog)]);
-                bldp_plot.plot_bregman_curves(eigenvalues, e_breg_exact,  e_breg_exact, curves_path, ylog);
+                bldp_plot.plot_bregman_curves(eigenvalues, e_svd, e_breg_exact, curves_path, ylog);
                 bldp_plot.plot_svd_curve(eigenvalues, e_svd, e_breg_exact, curves_path, ylog);
             end
 
