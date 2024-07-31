@@ -1,6 +1,7 @@
 clear; clearvars; close all; beep off;
 addpath('utils');
 warning('off', 'MATLAB:MKDIR:DirectoryExists');
+rng(4751);
 
 % Globals
 global matvec_count;
@@ -90,7 +91,7 @@ end
 % SuiteSparse matrices
 names = ["494_bus", "1138_bus", "662_bus", "bcsstk05"];
 names = [names, "bcsstk08", "bcsstk22", "lund_a"];
-names = [names, "illc1850", "mesh2e1", "p0201", "lp_bandm"];
+names = [names, "illc1850", "mesh2e1", "lp_bandm"];
 names = [names, "lp_sctap1", "lp_sctap3", "l9"];
 
 suitesparse_criteria.names = names;
