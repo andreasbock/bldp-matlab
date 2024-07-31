@@ -98,7 +98,7 @@ def process_csv_individual_tex(csv_path_in, csv_path_out, tol):
 if __name__ == '__main__':
     csv_in = Path('../RESULTS/small/results.csv')
     csv_out = Path('../RESULTS/small/results_out.csv')
-    process_csv(csv_in, csv_out, maxit=100, nranks=3, tol=1e-09)
+    process_csv(csv_in, csv_out, maxit=100, nranks=3, tol=1e-10)
 
     hpc_root = 'RESULTS_HPC'
     hpc_root_processed = f"{hpc_root}_tex"
