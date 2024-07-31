@@ -69,10 +69,12 @@ def process_csv(csv_path_in, csv_path_out, maxit, nranks, tol=1e-10):
             'BeqS': ['iterbreg', 'itersvd'],
             'ReqS': ['iterrbreg', 'itersvd'],
         }
+
         for eq in eq_header.keys():
             if csv[eq][i] == 1:
                 for v in eq_header[eq]:
-                    csv[v][i] = f"{csv[v][i]}$^\\dagger$"
+                    if not ("dagger" in csv[v][i]):
+                        csv[v][i] = f"{csv[v][i]}$^\\dagger$"
 
     csv.to_csv(csv_path_out, index=False, float_format='%.1e')
 
