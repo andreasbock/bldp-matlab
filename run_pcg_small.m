@@ -88,8 +88,8 @@ for i=2:numel(droptols)
 end
 
 % SuiteSparse matrices
-names = ["494_bus", "1138_bus", "bcsstk04", "662_bus", "bcsstk05"];
-names = [names, "bcsstk08", "bcsstk22", "bcsstm07", "nos5", "lund_a"];
+names = ["494_bus", "1138_bus", "662_bus", "bcsstk05"];
+names = [names, "bcsstk08", "bcsstk22", "lund_a"];
 names = [names, "illc1850", "mesh2e1", "p0201", "lp_bandm"];
 names = [names, "lp_sctap1", "lp_sctap3", "l9"];
 
