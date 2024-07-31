@@ -84,7 +84,7 @@ droptols = logspace(-8, 1, ntols);
 for i=2:numel(droptols)
     options(i).type = 'ict';
     options(i).droptol = droptols(i);  % ignored if 'type' is 'nofill'
-    options(i).michol = 'on';
+    options(i).michol = 'off';
     options(i).diagcomp = default_diagcomp;
 end
 
@@ -97,7 +97,7 @@ names = [names, "lp_sctap1", "lp_sctap3", "l9"];
 suitesparse_criteria.names = names;
 ids = SuitesSparseHelper.get(suitesparse_criteria);
 
-rank_percentages = [0.01 0.05 0.1 0.175];
+rank_percentages = [0.01 0.05 0.1];
 ratio_step = 0.25;  % Split between approximating positive and negative eigs
 
 % Begin simulations
