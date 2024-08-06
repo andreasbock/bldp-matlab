@@ -79,7 +79,7 @@ for i = 1:length(ids)
             config_abs.r = r;
             config_abs.method = 'evd';
             p_svd = bldp.svd_preconditioner(Q, S, config_abs);
-            error_svd_exact = norm(G_r - p_svd.U * p_svd.D * p_svd.U');
+            error_svd_exact = norm(G_r - p_svd.U * p_svd.D * p_svd.V');
 
             % Absolute value: Nyström (note that r == n!)
             config_abs.method = 'nystrom';

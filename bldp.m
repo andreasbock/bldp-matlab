@@ -2,11 +2,13 @@ classdef bldp
     methods (Static = true)
 
         function result = svd_preconditioner(Q, S, config)
-            n = size(Q, 1);
             if strcmp(config.method, 'evd')
                 tic;
-                [result.U, result.D] = bldp.truncate_matrix(Q \ S / Q' - eye(n), @(x) abs(x), config.r);
-                result.V = result.U;
+                [U, D, V] = svd(Q \ S / Q' - eye(size(Q, 1)));
+                result.U = U(:, 1:config.r);
+                result.D = D(1:config.r, 1:config.r);
+                result.V = V(:, 1:config.r);
+                result.action_inner = @ (x) bldp.SMW(result.U, result.D, result.V', x);
                 result.ctime = toc;
             else
                 % convert to handle
