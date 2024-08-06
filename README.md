@@ -11,6 +11,7 @@ directory root.
 
 ## Repository structure
 
+```
 .
 ├── example_truncations.m      # Contains a small example illustrating the main idea in presented in [1].
 ├── example_bldp.m             # Solve a few linear systems using the various preconditioners from `bldp.m`. 
@@ -24,6 +25,7 @@ directory root.
 ├── tests                      # Contains some tests.
 ├── LICENSE
 └── README.md                  # This file.
+```
 
 ## Acknowledgements
 
