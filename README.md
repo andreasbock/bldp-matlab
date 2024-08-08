@@ -19,7 +19,7 @@ directory root.
 │                              # exact truncations and approximations using randomised Nyström and Krylov-Schur.
 ├── run_pcg_small_matrices.m   # Run experiments from [1] for smaller matrices (compares exact truncations
 │                              # to Krylov-Schur/Nyström approximations).
-├── run_pcg_large.m            # Run experiments from [1] for large matrices (uses Krylov-Schur and Nyström
+├── run_pcg_matrix.m           # Script to run experiments [1] for large matrices (uses Krylov-Schur and Nyström
 │                              # to approximate the truncations).
 ├── utils                      # SuiteSparse helper functions and various plotting functions.
 ├── tests                      # Contains some tests.
