@@ -22,13 +22,7 @@ subspace_slack = 50;
 config_svd.method = 'krylov_schur';
 config_svd.tol = 1e-04;
 config_svd.maxit = 75;
-
-% SVD-preconditioner using Krylov-Schur
-opts_svd.issym = 1;
-opts_svd.tol = 1e-04;
-opts_svd.maxit = 100;
-opts_svd.disp = 0;
-opts_svd.fail = 'drop';
+subspace_slack_svd = 100;  % more generous for "pure SVD"
 
 % for csv files
 label_nopc = "$I$";
@@ -77,6 +71,7 @@ fprintf(options_file, 'config_breg.tol = %.1e\n', config_breg.tol);
 fprintf(options_file, 'config_breg.maxit = %d\n', config_breg.maxit);
 fprintf(options_file, 'oversampling = %d\n', oversampling);
 fprintf(options_file, 'subspace_slack = %d\n', subspace_slack);
+fprintf(options_file, 'subspace_slack_svd = %d\n', subspace_slack_svd);
 fprintf(options_file, 'tol_pcg = %.1e\n', tol_pcg);
 fprintf(options_file, 'maxit_pcg = %d\n', maxit_pcg);
 fprintf(options_file, 'drop_tols = %d\n', drop_tols);
@@ -186,7 +181,7 @@ for j = 1:numel(options)
         % SVD-based preconditioner using Krylov-Schur
         matvec_count = 0;
         config_svd.r = r;
-        config_svd.subspace_dimension = r + subspace_slack;
+        config_svd.subspace_dimension = r + subspace_slack_svd;
         p_svd = bldp.svd_preconditioner(Q, S_action, config_svd);
         tic
         [~, flag_svd, ~, iter_svd, resvec_svd] = pcg(S, b, tol_pcg, maxit_pcg, p_svd.action);
