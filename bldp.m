@@ -8,7 +8,6 @@ classdef bldp
                 result.U = U(:, 1:config.r);
                 result.D = D(1:config.r, 1:config.r);
                 result.V = V(:, 1:config.r);
-                result.action_inner = @ (x) bldp.SMW(result.U, result.D, result.V', x);
                 result.ctime = toc;
             else
                 % convert to handle
@@ -27,6 +26,17 @@ classdef bldp
                     end
                     tic;
                     [result.U, result.D, result.V] = bldp.nystrom(mat_action, config.sketching_matrix);
+                    result.ctime = toc;
+                elseif strcmp(config.method, 'krylov_schur')
+                    opts.issym = 1;
+                    opts.tol = config.tol;
+                    opts.maxit = config.maxit;
+                    opts.disp = 0;
+                    opts.fail = 'drop';
+                    opts.p = config.subspace_dimension;
+                    [result.U, result.D, result.diagnostics.ks_flag] = eigs(mat_action, size(Q, 1), config.r, 'largestreal', opts);
+                    result.diagnostics.nc = size(result.D, 2);
+                    result.V = result.U;
                     result.ctime = toc;
                 else
                     error("Invalid `method` field in `config`.")
