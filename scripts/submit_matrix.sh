@@ -17,4 +17,4 @@
 # -- end of LSF options -- 
 
 # -- commands you want to execute -- 
-matlab -batch run_pcg_large_parallel > MatlabOutput_run_pcg_large_"$MATRIX_NAME"_"$NYSTROM".txt
+matlab -batch run_pcg_matrix > MatlabOutput_run_pcg_matrix_"$MATRIX_NAME"_"$NYSTROM".txt
