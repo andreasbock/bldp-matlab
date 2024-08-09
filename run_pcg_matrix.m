@@ -17,12 +17,12 @@ config_nys.method = 'nystrom';
 config_nys.oversampling = oversampling;
 config_nys_indef.method = 'indefinite_nystrom';
 config_nys_indef.oversampling = 1.5;
-subspace_slack = 50;
+subspace_slack = 25;
 
 config_svd.method = 'krylov_schur';
 config_svd.tol = 1e-04;
-config_svd.maxit = 75;
-subspace_slack_svd = 100;  % more generous for "pure SVD"
+config_svd.maxit = 50;
+subspace_slack_svd = 25;
 
 % for csv files
 label_nopc = "$I$";
@@ -54,11 +54,10 @@ default_options.droptol = 0;  % ignored if 'type' is 'nofill'
 options(1) = default_options;
 
 drop_tols = [1e-01];
-for i=1:numel(drop_tols)
-    options(i+1).type = 'ict';
-    options(i+1).droptol = drop_tols(i);  % ignored if 'type' is 'nofill'
-end
-diagcomps = [0, 1e-02];
+%options(1).type = 'ict';
+%options(1).droptol = drop_tols(1);  % ignored if 'type' is 'nofill'
+
+diagcomps = [0];
 diagcomps(end+1) = -1;  % set later dynamically!
 ndiagcomp = numel(diagcomps);
 
