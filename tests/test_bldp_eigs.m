@@ -81,6 +81,17 @@ for i = 1:length(ids)
             p_svd = bldp.svd_preconditioner(Q, S, config_abs);
             error_svd_exact = norm(G_r - p_svd.U * p_svd.D * p_svd.V');
 
+            % Absolute value: SVD Krylov-Schur
+            config_abs.r = r;
+            config_abs.method = 'krylov_schur';
+            config_abs.v = randn(n, 1);
+            config_abs.estimate_largest_with_nystrom = 0;
+            config_abs.tol = 1e-10;
+            config_abs.maxit = 250;
+            config_abs.subspace_dimension = r + 50;
+            p_svd = bldp.svd_preconditioner(Q, S, config_abs);
+            error_svd_exact_ks = norm(G_r - p_svd.U * p_svd.D * p_svd.V');
+
             % Absolute value: Nyström (note that r == n!)
             config_abs.method = 'nystrom';
             config_abs.sketching_matrix = randn(n, n);
@@ -91,7 +102,7 @@ for i = 1:length(ids)
 
             % Diagnostics
             % SVD vs KS (r << n) and SVD vs Nyström (r == n)
-            error_svd = error_svd_exact > tol_test || error_svd_nys > tol_test;
+            error_svd = error_svd_exact > tol_test || error_svd_exact_ks > tol_test || error_svd_nys > tol_test;
 
             % Bregman
             config_breg.r = r;

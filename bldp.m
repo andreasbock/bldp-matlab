@@ -34,7 +34,7 @@ classdef bldp
                     opts.disp = 0;
                     opts.fail = 'drop';
                     opts.p = config.subspace_dimension;
-                    [result.U, result.D, result.diagnostics.ks_flag] = eigs(mat_action, size(Q, 1), config.r, 'largestreal', opts);
+                    [result.U, result.D, result.diagnostics.ks_flag] = eigs(mat_action, size(Q, 1), config.r, 'largestabs', opts);
                     result.diagnostics.nc = size(result.D, 2);
                     result.V = result.U;
                     result.ctime = toc;
