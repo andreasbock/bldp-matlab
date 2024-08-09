@@ -1,6 +1,6 @@
 #!/bin/sh
 declare -a nystrom=("0" "1")
-declare -a names=("Pres_Poisson" "bmwcra_1" "cfd1" "smt" "apache1" "thermal1" "crankseg_1" "crankseg_2" "bcsstk17" "bcsstk18" "consph")
+declare -a names=("Pres_Poisson" "bmwcra_1" "cfd1" "apache1" "thermal1" "crankseg_1" "crankseg_2")
 
 for j in "${nystrom[@]}"
 do
