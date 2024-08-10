@@ -108,7 +108,7 @@ classdef bldp
             if r_largest > 0
                 % Estimate largest eigenvalues
                 if config.estimate_largest_with_nystrom
-                    [U, D] = bldp.nystrom(@ (x) Q \ S(Q' \ x), config.sketching_matrix);
+                    [U, D] = bldp.nystrom(g, config.sketching_matrix);
                     D = diag(D)';
                     H_max = D(1,1);
                     result.diagnostics.nc = r_largest;
@@ -120,7 +120,7 @@ classdef bldp
             else
                 % Estimate largest eigenvalue for negative shift
                 if config.estimate_largest_with_nystrom
-                    [~, H_max] = bldp.nystrom(@ (x) Q \ S(Q' \ x), config.sketching_matrix);
+                    [~, H_max] = bldp.nystrom(g, config.sketching_matrix);
                     result.diagnostics.nc = 1;
                 else
                     H_max = eigs(g, n, 1, sigma, opts);
@@ -138,14 +138,14 @@ classdef bldp
                 eig_max = H_max(1, 1);
                 shg_defl = @ (x) eig_max*x - g(x);
                 [V, Dh, flag] = eigs(shg_defl, n, r_smallest, sigma, opts);
-                result.diagnostics.ks_flag = result.diagnostics.ks_flag & flag;
+                result.diagnostics.ks_flag = result.diagnostics.ks_flag | flag;
                 result.diagnostics.nc = result.diagnostics.nc + size(Dh, 2);
                 U = [U, V];
                 D = [D,  eig_max - diag(Dh)'];
             end
 
             if min(D) <= 0
-                fprintf("[Krylov-Schur] [MATLAB] Negative eigenvalues!");
+                fprintf("[MATLAB] Negative eigenvalues!");
                 result.diagnostics.flag = 1;
                 nonsingular_idx = D>0;
                 D = D(nonsingular_idx);
