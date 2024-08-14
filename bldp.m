@@ -21,9 +21,6 @@ classdef bldp
                     [result.U, result.D, result.V] = bldp.indefinite_nystrom(mat_action, config.sketching_matrix, config.r);
                     result.ctime = toc;
                 elseif strcmp(config.method, 'nystrom')
-                    if ~isa(S, 'function_handle')
-                        S = @(x) S*x;
-                    end
                     tic;
                     [result.U, result.D, result.V] = bldp.nystrom(mat_action, config.sketching_matrix, config.r);
                     result.ctime = toc;
@@ -202,7 +199,7 @@ classdef bldp
                 S = S * S;
                 V = U;
             catch
-                [U, S, V] = bldp.indefinite_nystrom(A, sketching_matrix, size(sketching_matrix, 2));
+                [U, S, V] = bldp.indefinite_nystrom(A, sketching_matrix, r);
             end
         end
 
