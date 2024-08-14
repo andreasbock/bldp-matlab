@@ -25,7 +25,7 @@ classdef bldp
                         S = @(x) S*x;
                     end
                     tic;
-                    [result.U, result.D, result.V] = bldp.nystrom(mat_action, config.sketching_matrix);
+                    [result.U, result.D, result.V] = bldp.nystrom(mat_action, config.sketching_matrix, config.r);
                     result.ctime = toc;
                 elseif strcmp(config.method, 'krylov_schur')
                     opts.issym = 1;
@@ -108,7 +108,7 @@ classdef bldp
             if r_largest > 0
                 % Estimate largest eigenvalues
                 if config.estimate_largest_with_nystrom
-                    [U, D] = bldp.nystrom(g, config.sketching_matrix);
+                    [U, D] = bldp.nystrom(g, config.sketching_matrix, r_largest);
                     D = diag(D)';
                     H_max = D(1,1);
                     result.diagnostics.nc = r_largest;
@@ -120,8 +120,7 @@ classdef bldp
             else
                 % Estimate largest eigenvalue for negative shift
                 if config.estimate_largest_with_nystrom
-                    [~, H_max] = bldp.nystrom(g, config.sketching_matrix);
-                    result.diagnostics.nc = 1;
+                    [~, H_max] = bldp.nystrom(g, config.sketching_matrix, 1);
                 else
                     H_max = eigs(g, n, 1, sigma, opts);
                 end
@@ -189,12 +188,13 @@ classdef bldp
             y = x - U * y;
         end
 
-        function [U, S, V] = nystrom(A, sketching_matrix)
+        function [U, S, V] = nystrom(A, sketching_matrix, r)
             if ~isa(A, 'function_handle')
                 error("A must be a function handle.");
             end
             Y = splitapply(A, sketching_matrix, 1:size(sketching_matrix, 2));
-            inner = sketching_matrix' * Y;
+            [Ui, Si, Vi] = svd(sketching_matrix' * Y);
+            inner = Ui(:, 1:r) * Si(1:r, 1:r) * Vi(:, 1:r)';
             try
                 C = chol(inner);
                 Yhat = Y / C;

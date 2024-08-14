@@ -7,7 +7,7 @@ rng(4751);
 global matvec_count;
 
 % bldp options
-oversampling = 60;
+oversampling = 25;
 config_breg.method = 'krylov_schur';
 config_breg.estimate_largest_with_nystrom = str2num(getenv("NYSTROM"));
 config_breg.tol = 1e-02;
@@ -152,9 +152,9 @@ for j = 1:numel(options)
         cr = round(r*config_nys_indef.oversampling);
         r_max = max([r + config_breg.oversampling, r + config_nys.oversampling, cr]);
         sketching_matrix = randn(n, r_max);
-        config_breg.sketching_matrix = sketching_matrix(:, 1:r + config_breg.oversampling);
 
         % Nyström of large positive eigenvalues
+        config_nys.r = r;
         config_nys.sketching_matrix = sketching_matrix(:, 1:r + config_nys.oversampling);
         p_nys = bldp.svd_preconditioner(Q, S, config_nys);
         tic
@@ -192,8 +192,9 @@ for j = 1:numel(options)
         for ratio = 0:ratio_step:1
             fprintf('%s, n = %d, r = %d, ratio = %f\n', label, n, r, ratio);
             matvec_count = 0;
-            config_breg.ratio = ratio;
             config_breg.r = r;
+            config_breg.r_largest = floor(config_breg.r * ratio);
+            config_breg.sketching_matrix = sketching_matrix(:, 1:config_breg.r_largest + config_breg.oversampling);
             config_breg.subspace_dimension = r + subspace_slack;
 
             bregman_krylovschur_fails = 0;
