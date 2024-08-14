@@ -185,7 +185,7 @@ for j = 1:numel(options)
         tic
         [~, flag_svd, ~, iter_svd, resvec_svd] = pcg(S, b, tol_pcg, maxit_pcg, p_svd.action);
         stime_svd = toc;
-        fprintf(csv_out, csv_format, label_svd, p_svd.diagnostics.nc, "-1", resvec_svd(end)/norm_b, iter_svd, flag_svd, p_svd.ctime, stime_svd, matvec_count, p_svd.diagnostics.ks_flag);
+        fprintf(csv_out, csv_format, label_svd, rank(p_svd.D), "-1", resvec_svd(end)/norm_b, iter_svd, flag_svd, p_svd.ctime, stime_svd, matvec_count, p_svd.diagnostics.ks_flag);
 
         any_success = any_success || ~flag_nys_indef ||  ~flag_nys;
         % Bregman
@@ -211,7 +211,7 @@ for j = 1:numel(options)
                 has_already_failed(1+ridx) = 1;
             end
             fprintf(csv_out, csv_format, label_breg_apx(ratio), ...
-                p_breg.diagnostics.nc, num2str(ratio), rv_breg, ...
+                rank(p_breg.D), num2str(ratio), rv_breg, ...
                 iter_breg, flag_breg, p_breg.ctime, stime_breg, ...
                 matvec_count, p_breg.diagnostics.ks_flag);
             any_success = any_success || ~flag_breg;
