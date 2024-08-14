@@ -7,22 +7,22 @@ rng(4751);
 global matvec_count;
 
 % bldp options
-oversampling = 20;
+oversampling = 60;
 config_breg.method = 'krylov_schur';
 config_breg.estimate_largest_with_nystrom = str2num(getenv("NYSTROM"));
-config_breg.tol = 1e-04;
-config_breg.maxit = 50;
+config_breg.tol = 1e-02;
+config_breg.maxit = 75;
+subspace_slack = 75;
 config_breg.oversampling = oversampling;
 config_nys.method = 'nystrom';
 config_nys.oversampling = oversampling;
 config_nys_indef.method = 'indefinite_nystrom';
 config_nys_indef.oversampling = 1.5;
-subspace_slack = 25;
 
 config_svd.method = 'krylov_schur';
-config_svd.tol = 1e-04;
-config_svd.maxit = 50;
-subspace_slack_svd = 25;
+config_svd.tol = 1e-02;
+config_svd.maxit = 75;
+subspace_slack_svd = 75;
 
 % for csv files
 label_nopc = "$I$";
