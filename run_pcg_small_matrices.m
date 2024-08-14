@@ -332,13 +332,16 @@ for i = 1:length(ids)
             breg_equal_rbreg = norm(G_breg - G_rbreg) < eq_tol;
             breg_equal_svd = norm(G_breg - G_r) < eq_tol;
             rbreg_equal_svd = norm(G_rbreg - G_r) < eq_tol;
-
+            
+            eigs_sorted = sort(eigenvalues, 'descend');
+            gamma = @(x) x - log(1 + x);
+            nu = @(x) 1./(1 + x) + log(1 + x) - 1;
             % Plot spectra
             line_width = 1.8;
             font_size = 16;
             x = 1:n;
             figure('Visible', 'off');
-            plot(x, flip(sort(eigenvalues)), 'DisplayName', '$\tilde E$', 'LineStyle', '-', 'LineWidth', line_width);
+            plot(x, eigs_sorted, 'Color', 'black', 'DisplayName', '$\tilde E$', 'LineStyle', '-', 'LineWidth', line_width);
             xlabel('$n$', 'Interpreter', 'latex', 'FontSize', font_size);
             ylabel('Eigenvalue', 'Interpreter', 'latex', 'FontSize', font_size);
             ldg = legend;
@@ -347,9 +350,24 @@ for i = 1:length(ids)
             exportgraphics(gcf, fullfile(path, 'eigenvalues.pdf'));
             hold off;
 
+            % Plot spectra under the image of nu/gamma
+            eps = 1e-16;
+            line_width = 1.1;
+            font_size = 16;
+            x = 1:n;
+            figure('Visible', 'off');
+            semilogy(x, max(eps, gamma(eigs_sorted)), 'Color', 'red', 'DisplayName', '$\gamma$', 'LineStyle', '-', 'LineWidth', line_width); hold on;
+            semilogy(x, max(eps, nu(eigs_sorted)), 'Color', 'blue', 'DisplayName', '$\nu$', 'LineStyle', '-', 'LineWidth', line_width);
+            xlabel('$n$', 'Interpreter', 'latex', 'FontSize', font_size);
+            ylim([eps 1e+06])
+            ldg = legend;
+            set(ldg, 'Interpreter', 'latex', 'Location', 'northwest', 'FontSize', font_size);
+            grid on;
+            exportgraphics(gcf, fullfile(path, 'gamma_nu.pdf'));
+            hold off;
+
             % Plot PCG results
             figure('Visible', 'off');
-
             plot_resvec(relres_nopc, plotting.nopc);
             plot_resvec(relres_ichol, plotting.ichol);
             plot_resvec(relres_breg, plotting.breg);
