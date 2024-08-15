@@ -93,6 +93,7 @@ for i = 1:length(ids)
             error_svd_exact_ks = norm(G_r - p_svd.U * p_svd.D * p_svd.V');
 
             % Absolute value: Nyström (note that r == n!)
+            config_abs.r = n;
             config_abs.method = 'nystrom';
             config_abs.sketching_matrix = randn(n, n);
             config_abs.oversampling = 0;

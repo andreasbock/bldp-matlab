@@ -19,12 +19,8 @@ sketching_matrix = randn(n, r);
 Y = A * sketching_matrix;
 A_nys_naive = Y * ((sketching_matrix' * Y) \ Y');
 
-% Nyström (bldp)
-[U, S] = bldp.nystrom(A_hdl, sketching_matrix);
-A_nys_bldp = U * S * U';
-
 % Indefinite Nyström (c = 1)
-[U, S, V] = bldp.indefinite_nystrom(A_hdl, sketching_matrix, r);
+[U, S, V] = bldp.nystrom(A_hdl, sketching_matrix, r);
 A_nys_bldp_indef = U * S * V';
 
 % Random SVD (single pass)
@@ -43,7 +39,6 @@ Ar = V_svd * E_svd * W_svd';
 Ar_bldp = U_r_bldp * E_r_bldp * U_r_bldp';
 error_sanity_check = max([ ...
     norm(A - A_nys_naive) ...
-    norm(A - A_nys_bldp) ...
     norm(A - A_nys_bldp_indef) ...
     norm(A - A_rsvd_sp) ...
     norm(Ar - Ar_bldp)] ...
@@ -65,17 +60,11 @@ Y = A * sketching_matrix;
 % Nyström (naive)
 A_nys_naive = Y * ((sketching_matrix' * Y) \ Y');
 
-% Nyström (bldp)
-[U, S] = bldp.nystrom(A_hdl, sketching_matrix);
-A_nys_bldp = U * S * U';
-
 % Indefinite Nyström (c = 1)
-[U, S, V] = bldp.indefinite_nystrom(A_hdl, sketching_matrix, r);
+[U, S, V] = bldp.nystrom(A_hdl, sketching_matrix, r);
 A_nys_bldp_indef = U * S * V';
 
-err_nys_bldp = norm(A_nys_naive - A_nys_bldp);
-err_nys_bldp_indef = norm(A_nys_naive - A_nys_bldp_indef);
-err_nys_impl = max(err_nys_bldp, err_nys_bldp_indef);
+err_nys_impl = norm(A_nys_naive - A_nys_bldp_indef);
 
 if err_nys_impl > 1e-08
     error("bldp implementation differs from Nystrom!");
@@ -122,12 +111,8 @@ sketching_matrix = randn(n, r);
 Y = A * sketching_matrix;
 A_nys_naive = Y * ((sketching_matrix' * Y) \ Y');
 
-% Nyström (bldp)
-[U, S, V] = bldp.nystrom(A_hdl, sketching_matrix);
-A_nys_bldp = U * S * V';
-
-% Indefinite Nyström (c = 1)
-[U, S, V] = bldp.indefinite_nystrom(A_hdl, sketching_matrix, r);
+% Nyström (c = 1)
+[U, S, V] = bldp.nystrom(A_hdl, sketching_matrix, r);
 A_nys_bldp_indef = U * S * V';
 
 % Random SVD (single pass)
@@ -147,7 +132,6 @@ Ar_bldp = U_r_bldp * E_r_bldp * U_r_bldp';
 
 error_sanity_check = max([ ...
     norm(A - A_nys_naive) ...
-    norm(A - A_nys_bldp) ...
     norm(A - A_nys_bldp_indef) ...
     norm(A - A_rsvd_sp) ...
     norm(Ar - Ar_bldp)] ...
@@ -173,7 +157,7 @@ sketching_matrix_r = sketching_matrix(:, 1:r);
 Ar = A_U(:,1:r)*A_L(1:r,1:r)*A_V(:,1:r)';
 
 % Indefinite Nyström (c = 1.5)
-[U, S, V] = bldp.indefinite_nystrom(A_hdl, sketching_matrix, r);
+[U, S, V] = bldp.nystrom(A_hdl, sketching_matrix, r);
 A_nys_bldp_indef = U * S * V';
 
 % Random SVD (single pass)

@@ -16,11 +16,7 @@ classdef bldp
                 end
                 % which Nyström approximation?
                 mat_action = @(x) Q \ S(Q' \ x) - x;
-                if strcmp(config.method, 'indefinite_nystrom')
-                    tic;
-                    [result.U, result.D, result.V] = bldp.indefinite_nystrom(mat_action, config.sketching_matrix, config.r);
-                    result.ctime = toc;
-                elseif strcmp(config.method, 'nystrom')
+                if strcmp(config.method, 'nystrom')
                     tic;
                     [result.U, result.D, result.V] = bldp.nystrom(mat_action, config.sketching_matrix, config.r);
                     result.ctime = toc;
@@ -186,29 +182,6 @@ classdef bldp
         end
 
         function [U, S, V] = nystrom(A, sketching_matrix, r)
-            if ~isa(A, 'function_handle')
-                error("A must be a function handle.");
-            end
-            Y = splitapply(A, sketching_matrix, 1:size(sketching_matrix, 2));
-            [Ui, Si, Vi] = svd(sketching_matrix' * Y);
-            inner = Ui(:, 1:r) * Si(1:r, 1:r) * Vi(:, 1:r)';
-            try
-                C = chol(inner);
-                Yhat = Y / C;
-                [U, S] = svd(Yhat, 'econ');
-                S = S * S;
-                V = U;
-            catch
-                [U, S, V] = bldp.indefinite_nystrom(A, sketching_matrix, r);
-            end
-        end
-
-        function [U, S, V] = indefinite_nystrom(A, sketching_matrix, r)
-            % Implements:
-            % Nakatsukasa, Yuji, and Taejun Park. "Randomized low-rank
-            % approximation for symmetric indefinite matrices." SIAM 
-            % Journal on Matrix Analysis and Applications 44.3 (2023):
-            % 1370-1392.
             if ~isa(A, 'function_handle')
                 error("A must be a function handle.");
             end
