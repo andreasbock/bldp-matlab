@@ -7,22 +7,17 @@ rng(4751);
 global matvec_count;
 
 % bldp options
-oversampling = 25;
+oversampling = 30;
 config_breg.method = 'krylov_schur';
 config_breg.estimate_largest_with_nystrom = str2num(getenv("NYSTROM"));
 config_breg.tol = 1e-02;
-config_breg.maxit = 75;
-subspace_slack = 75;
 config_breg.oversampling = oversampling;
 config_nys.method = 'nystrom';
 config_nys.oversampling = oversampling;
 config_nys_indef.method = 'indefinite_nystrom';
 config_nys_indef.oversampling = 1.5;
-
 config_svd.method = 'krylov_schur';
 config_svd.tol = 1e-02;
-config_svd.maxit = 75;
-subspace_slack_svd = 75;
 
 % for csv files
 label_nopc = "$I$";
@@ -61,16 +56,20 @@ diagcomps = [0];
 diagcomps(end+1) = -1;  % set later dynamically!
 ndiagcomp = numel(diagcomps);
 
+% Krylov-Schur parameters
+subspace_slacks = [60, 100];
+subspace_slack_svds = [60, 100];
+maxits = [60, 100];
+
 % dump options
 options_file = fopen(fullfile(base_path, "options.txt"), "w");
 fprintf(options_file, 'estimate_largest_with_nystrom = %d\n', config_breg.estimate_largest_with_nystrom);
 fprintf(options_file, 'config_svd.tol = %.1e\n', config_svd.tol);
-fprintf(options_file, 'config_svd.maxit = %d\n', config_svd.maxit);
 fprintf(options_file, 'config_breg.tol = %.1e\n', config_breg.tol);
-fprintf(options_file, 'config_breg.maxit = %d\n', config_breg.maxit);
 fprintf(options_file, 'oversampling = %d\n', oversampling);
-fprintf(options_file, 'subspace_slack = %d\n', subspace_slack);
-fprintf(options_file, 'subspace_slack_svd = %d\n', subspace_slack_svd);
+fprintf(options_file, 'maxits = %d\n', maxits);
+fprintf(options_file, 'subspace_slacks = %d\n', subspace_slacks);
+fprintf(options_file, 'subspace_slack_svds = %d\n', subspace_slack_svds);
 fprintf(options_file, 'tol_pcg = %.1e\n', tol_pcg);
 fprintf(options_file, 'maxit_pcg = %d\n', maxit_pcg);
 fprintf(options_file, 'drop_tols = %d\n', drop_tols);
@@ -82,6 +81,7 @@ suitesparse_criteria.names = [string(getenv("MATRIX_NAME"))];
 ids = SuitesSparseHelper.get(suitesparse_criteria);
 
 rank_percentages = [0.0025, 0.0075];
+
 ratio_step = 0.25;  % Split between approximating positive and negative eigs
 
 % Begin simulations
@@ -180,7 +180,8 @@ for j = 1:numel(options)
         % SVD-based preconditioner using Krylov-Schur
         matvec_count = 0;
         config_svd.r = r;
-        config_svd.subspace_dimension = r + subspace_slack_svd;
+	config_svd.maxit = maxits(ridx);
+        config_svd.subspace_dimension = r + subspace_slack_svds(ridx);
         p_svd = bldp.svd_preconditioner(Q, S_action, config_svd);
         tic
         [~, flag_svd, ~, iter_svd, resvec_svd] = pcg(S, b, tol_pcg, maxit_pcg, p_svd.action);
@@ -189,13 +190,14 @@ for j = 1:numel(options)
 
         any_success = any_success || ~flag_nys_indef ||  ~flag_nys;
         % Bregman
+	config_breg.maxit = maxits(ridx);
+	config_breg.r = r;
+	config_breg.subspace_dimension = r + subspace_slacks(ridx);
         for ratio = 0:ratio_step:1
             fprintf('%s, n = %d, r = %d, ratio = %f\n', label, n, r, ratio);
             matvec_count = 0;
-            config_breg.r = r;
             config_breg.r_largest = floor(config_breg.r * ratio);
             config_breg.sketching_matrix = sketching_matrix(:, 1:config_breg.r_largest + config_breg.oversampling);
-            config_breg.subspace_dimension = r + subspace_slack;
 
             bregman_krylovschur_fails = 0;
             if ~has_already_failed(1+ridx)
