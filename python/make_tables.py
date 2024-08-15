@@ -102,7 +102,7 @@ if __name__ == '__main__':
     csv_out = Path('../RESULTS/small/results_out.csv')
     process_csv(csv_in, csv_out, maxit=100, nranks=3, tol=1e-10)
 
-    hpc_root = 'RESULTS_HPC'
+    hpc_root = 'RESULTS'
     hpc_root_processed = f"{hpc_root}_tex"
     Path(f"../{hpc_root_processed}").mkdir(exist_ok=True)
     csv_in_paths = Path(f'../{hpc_root}/large').glob('nys*/csv_files/*.csv')
