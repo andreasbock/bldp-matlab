@@ -87,11 +87,19 @@ ratio_step = 0.25;  % Split between approximating positive and negative eigs
 % Begin simulations
 Prob = ssget(ids(1));  % Prob is a struct (matrix, name, meta-data, ...)
 S = Prob.A;        % A is a symmetric sparse matrix
+n = min(size(S, 1), size(S, 2));
+b = randn(n, 1);
+% Check if this is a least-squares problem; symmetrise if so
+if size(S, 1) > size(S, 2)
+    S = S' * S;
+    b = S'*b;
+elseif size(S, 1) < size(S, 2)
+    S = S * S';
+    b = S * b;
+end
 S_action = @ (x) S_action_fn(S, x);
 label = replace(Prob.name, "/", "_");
 
-n = size(S, 1);
-b = randn(n, 1);
 norm_b = norm(b);
 I = speye(n);
 v = randn(n, 1);
