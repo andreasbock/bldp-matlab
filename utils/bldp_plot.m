@@ -186,7 +186,7 @@ classdef bldp_plot
         function b = flismember(x, xs)
             b = 0;
             for i = 1:numel(xs)
-               if abs(x - xs(i)) < 1e-14
+               if abs(x - xs(i)) < 1e-12
                    b = 1;
                end
             end

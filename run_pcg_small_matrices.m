@@ -17,7 +17,7 @@ subspace_slack = 50;
 config_evd.method = 'evd';
 config_nys.method = 'nystrom';
 config_nys.oversampling = 20;
-config_nys_indef.method = 'indefinite_nystrom';
+config_nys_indef.method = 'nystrom';
 config_nys_indef.oversampling = 1.5;
 
 % for csv files
@@ -215,6 +215,7 @@ for i = 1:length(ids)
 
             % Plain Nyström
             config_nys.sketching_matrix = sketching_matrix(:, 1:r + config_nys.oversampling);
+            config_nys.r = r;
             nys_fails = 0;
             if ~has_already_failed(1)
                 p_nys = bldp.svd_preconditioner(Q, S, config_nys);
