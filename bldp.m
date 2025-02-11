@@ -181,15 +181,32 @@ classdef bldp
             y = x - U * y;
         end
 
+        function [U, Sigma, V] = spsd_nystrom(A, sketching_matrix, r)
+            if ~isa(A, 'function_handle')
+                error("A must be a function handle.");
+            end
+            Y = splitapply(A, sketching_matrix, 1:size(sketching_matrix, 2));
+            nu = eps(norm(Y, 'fro'));
+            Y_nu = Y + nu*sketching_matrix;
+            C = chol(sketching_matrix'*Y_nu);
+            B = Y_nu / C;
+            [U, S, ~] = svd(B);
+            U = U(:, 1:r);
+            S = S(1:r, 1:r);
+            n = size(A, 1);
+            Sigma = max(diag(zeros(1, n)), S.^2 - nu*speye(n));
+            V = U';
+        end
+
         function [U, S, V] = nystrom(A, sketching_matrix, r)
             if ~isa(A, 'function_handle')
                 error("A must be a function handle.");
             end
             Y = splitapply(A, sketching_matrix, 1:size(sketching_matrix, 2));
-            [U, S, V] = svd(sketching_matrix' * Y);
+            [U, S] = eig(sketching_matrix' * Y);
             U = Y * U(:, 1:r);
             S = pinv(S(1:r, 1:r));
-            V = Y * V(:, 1:r);
+            V = U;
         end
     end
 end
